@@ -4,9 +4,12 @@ import { logger } from "../lib/logger.js";
 import { metrics } from "../lib/metrics.js";
 import { errorResponse } from "../lib/error.js";
 
-
 export function hashKey(apiKey) {
-  return crypto.createHash("sha256").update(apiKey).digest("hex").slice(0, 12);
+  return crypto
+    .createHash("sha256")
+    .update(apiKey)
+    .digest("hex")
+    .slice(0, 12);
 }
 
 export async function rateLimit(req, res, next) {
@@ -18,6 +21,7 @@ export async function rateLimit(req, res, next) {
     result = await checkRateLimit(req.apiKey);
   } catch (err) {
     metrics.rate_limiter_errors++;
+
     logger.error(
       {
         reqId: req.id,
@@ -27,9 +31,9 @@ export async function rateLimit(req, res, next) {
     );
 
     return res.status(503).json(
-       errorResponse(
+      errorResponse(
         "RATE_LIMITER_UNAVAILABLE",
-        "Rate limiter is unavailable",
+        "Rate limiter is unavailable"
       )
     );
   }
@@ -56,15 +60,21 @@ export async function rateLimit(req, res, next) {
 
   if (!result.allowed) {
     metrics.requests_blocked++;
+
+    // Standards-compliant retry hint
+    if (typeof result.retryAfter === "number") {
+      res.set("Retry-After", result.retryAfter);
+    }
+
     return res.status(429).json(
       errorResponse(
-      "RATE_LIMIT_EXCEEDED",
-      "Too many requests",
-      { retry_after_seconds: result.retryAfter }
-    )
-);
-  }else {
-    metrics.requests_allowed++;
+        "RATE_LIMIT_EXCEEDED",
+        "Too many requests",
+        { retry_after_seconds: result.retryAfter }
+      )
+    );
   }
+
+  metrics.requests_allowed++;
   next();
 }

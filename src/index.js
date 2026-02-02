@@ -11,8 +11,11 @@ import { adminAuth } from "./middleware/adminAuth.js";
 import { apiKeyAuth, rotateApiKey } from "./middleware/apiKeyAuth.js";
 import { rateLimit } from "./middleware/rateLimit.js";
 import { metrics } from "./lib/metrics.js";
+import { loadRateLimiterScript } from "./lib/lua.js";
+
 
 await connectRedis();
+await loadRateLimiterScript();
 
 const PORT = process.env.PORT || 3002;
 let isShuttingDown = false;
