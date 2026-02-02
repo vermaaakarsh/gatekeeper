@@ -8,6 +8,8 @@ import { rateLimit } from "./middleware/rateLimit.js";
 
 await connectRedis();
 
+const PORT = process.env.PORT || 3002;
+let isShuttingDown = false;
 const app = express();
 app.use(express.json());
 
@@ -33,7 +35,43 @@ app.post(
 );
 
 
-const PORT = process.env.PORT || 3002;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Gatekeeper API running on port ${PORT}`);
 });
+
+
+async function shutdown(signal) {
+  if (isShuttingDown) {
+    return;
+  }
+
+  isShuttingDown = true;
+
+  console.log(`\nReceived ${signal}. Shutting down gracefully...`);
+
+  server.close(async () => {
+    console.log("HTTP server closed");
+
+    try {
+      const { redis } = await import("./lib/redis.js");
+
+      if (redis.isOpen) {
+        await redis.quit();
+        console.log("Redis connection closed");
+      }
+    } catch (err) {
+      console.error("Error during Redis shutdown:", err.message);
+    }
+
+    process.exit(0);
+  });
+
+  setTimeout(() => {
+    console.error("Graceful shutdown timed out. Forcing exit.");
+    process.exit(1);
+  }, 5000);
+}
+
+
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);
