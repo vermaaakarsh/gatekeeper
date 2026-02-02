@@ -2,20 +2,21 @@ version: "3.9"
 
 services:
   api:
+    container_name: gatekeeper-api
     build: .
+    env_file:
+      - .env
     ports:
       - "3002:3002"
     volumes:
       - .:/app
       - /app/node_modules
-    environment:
-      - PORT=3002
-      - REDIS_URL=redis://redis:6379
     depends_on:
       - redis
     command: pnpm dev
 
   redis:
+    container_name: gatekeeper-redis
     image: redis:7-alpine
     ports:
       - "6379:6379"
