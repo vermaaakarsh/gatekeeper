@@ -2,6 +2,7 @@ import { disableApiKey, generateApiKey, getApiKeyConfig, isApiKeyValid, storeApi
 import { logger } from "../lib/logger.js";
 import { hashKey } from "./rateLimit.js";
 import { metrics } from "../lib/metrics.js";
+import { errorResponse } from "../lib/error.js";
 
 
 export async function apiKeyAuth(req, res, next) {

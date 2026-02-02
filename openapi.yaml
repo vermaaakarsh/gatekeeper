@@ -1,11 +1,14 @@
 openapi: 3.0.3
+
 info:
   title: Gatekeeper API
   description: |
-    Gatekeeper is a Redis-backed, API-key–based rate limiting service.
+    Gatekeeper is a production-grade, Redis-backed API key and
+    rate-limiting service.
 
-    It provides per-API-key rate limiting with fail-closed semantics,
-    structured logging, and Prometheus-compatible metrics.
+    It provides per-API-key rate limiting with **fail-closed semantics**,
+    **atomic enforcement using Redis Lua**, structured logging,
+    and Prometheus-compatible metrics.
   version: 1.0.0
 
 servers:
@@ -25,21 +28,49 @@ components:
       name: X-Admin-Secret
 
   schemas:
-    Error:
+    ErrorResponse:
       type: object
       properties:
         error:
           type: object
+          required:
+            - code
+            - message
           properties:
             code:
               type: string
             message:
               type: string
-            retry_after_seconds:
-              type: integer
-          required:
-            - code
-            - message
+            details:
+              type: object
+              additionalProperties: true
+
+    RateLimitDecision:
+      type: object
+      properties:
+        allowed:
+          type: boolean
+
+  headers:
+    X-RateLimit-Limit:
+      description: Maximum number of requests allowed in the current window
+      schema:
+        type: integer
+
+    X-RateLimit-Remaining:
+      description: Remaining requests in the current window
+      schema:
+        type: integer
+
+    X-RateLimit-Reset:
+      description: Epoch timestamp (seconds) when the rate limit resets
+      schema:
+        type: integer
+
+    Retry-After:
+      description: Seconds to wait before retrying (only present on 429)
+      schema:
+        type: integer
 
 paths:
   /health:
@@ -48,6 +79,14 @@ paths:
       responses:
         "200":
           description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
 
   /metrics:
     get:
@@ -55,6 +94,10 @@ paths:
       responses:
         "200":
           description: Metrics output
+          content:
+            text/plain:
+              schema:
+                type: string
 
   /v1/limit/check:
     post:
@@ -64,14 +107,34 @@ paths:
       responses:
         "200":
           description: Request allowed
-        "429":
-          description: Rate limit exceeded
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/X-RateLimit-Reset"
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: "#/components/schemas/RateLimitDecision"
+
+        "429":
+          description: Rate limit exceeded
+          headers:
+            Retry-After:
+              $ref: "#/components/headers/Retry-After"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
         "503":
           description: Rate limiter unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /admin/api-keys:
     post:
@@ -94,6 +157,13 @@ paths:
       responses:
         "201":
           description: API key created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  apiKey:
+                    type: string
 
   /admin/api-keys/{key}/disable:
     post:
@@ -109,8 +179,20 @@ paths:
       responses:
         "200":
           description: API key disabled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: disabled
         "404":
           description: API key not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /admin/api-keys/{key}/rotate:
     post:
@@ -126,5 +208,27 @@ paths:
       responses:
         "200":
           description: API key rotated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  oldApiKey:
+                    type: string
+                  newApiKey:
+                    type: string
+                  limits:
+                    type: object
+                    properties:
+                      limit:
+                        type: integer
+                      window:
+                        type: integer
+                      burst:
+                        type: integer
         "404":
           description: API key not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"

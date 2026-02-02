@@ -12,6 +12,7 @@ import { apiKeyAuth, rotateApiKey } from "./middleware/apiKeyAuth.js";
 import { rateLimit } from "./middleware/rateLimit.js";
 import { metrics } from "./lib/metrics.js";
 import { loadRateLimiterScript } from "./lib/lua.js";
+import { errorResponse } from "./lib/error.js";
 
 
 await connectRedis();
