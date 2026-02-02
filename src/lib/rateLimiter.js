@@ -4,15 +4,17 @@ const LIMIT = 100;          // requests
 const WINDOW_SECONDS = 60; // per minute
 const BURST = 20;
 
+export const RATE_LIMIT = LIMIT + BURST;
+
 export async function checkRateLimit(apiKey) {
   const key = `bucket:${apiKey}`;
   const now = Math.floor(Date.now() / 1000);
 
-  let bucket = await redis.hGetAll(key);
+  const bucket = await redis.hGetAll(key);
 
   // First request for this key
   if (!bucket.tokens) {
-    const tokens = LIMIT + BURST - 1;
+    const tokens = RATE_LIMIT - 1;
 
     await redis.hSet(key, {
       tokens,
@@ -23,6 +25,7 @@ export async function checkRateLimit(apiKey) {
 
     return {
       allowed: true,
+      limit: RATE_LIMIT,
       remaining: tokens,
       resetAt: now + WINDOW_SECONDS,
     };
@@ -31,21 +34,22 @@ export async function checkRateLimit(apiKey) {
   let tokens = Number.parseInt(bucket.tokens, 10);
   let lastRefill = Number.parseInt(bucket.last_refill, 10);
 
-  // Refill logic
   const elapsed = now - lastRefill;
   const refillRate = LIMIT / WINDOW_SECONDS;
   const refill = Math.floor(elapsed * refillRate);
 
   if (refill > 0) {
-    tokens = Math.min(LIMIT + BURST, tokens + refill);
+    tokens = Math.min(RATE_LIMIT, tokens + refill);
     lastRefill = now;
   }
 
   if (tokens <= 0) {
     return {
       allowed: false,
+      limit: RATE_LIMIT,
       remaining: 0,
-      retryAfter: WINDOW_SECONDS - elapsed,
+      resetAt: lastRefill + WINDOW_SECONDS,
+      retryAfter: Math.max(0, WINDOW_SECONDS - elapsed),
     };
   }
 
@@ -56,8 +60,11 @@ export async function checkRateLimit(apiKey) {
     last_refill: lastRefill,
   });
 
+  await redis.expire(key, WINDOW_SECONDS * 2);
+
   return {
     allowed: true,
+    limit: RATE_LIMIT,
     remaining: tokens,
     resetAt: lastRefill + WINDOW_SECONDS,
   };
