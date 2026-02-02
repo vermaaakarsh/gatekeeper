@@ -1,9 +1,9 @@
 import "dotenv/config";
 import express from "express";
-import { generateApiKey, storeApiKey } from "./lib/apiKeys.js";
+import { disableApiKey,generateApiKey, storeApiKey } from "./lib/apiKeys.js";
 import { connectRedis } from "./lib/redis.js";
 import { adminAuth } from "./middleware/adminAuth.js";
-import { apiKeyAuth } from "./middleware/apiKeyAuth.js";
+import { apiKeyAuth, rotateApiKey } from "./middleware/apiKeyAuth.js";
 import { rateLimit } from "./middleware/rateLimit.js";
 
 await connectRedis();
@@ -20,15 +20,12 @@ app.get("/health", (req, res) => {
 
 app.post("/admin/api-keys", adminAuth, async (req, res) => {
   const { limit, window, burst } = req.body || {};
-
   const apiKey = generateApiKey();
-
   await storeApiKey(apiKey, {
     limit,
     window,
     burst,
   });
-
   res.status(201).json({
     apiKey,
     limits: {
@@ -38,7 +35,25 @@ app.post("/admin/api-keys", adminAuth, async (req, res) => {
     },
   });
 });
+app.post("/admin/api-keys/:key/disable", adminAuth, async (req, res) => {
+  const { key } = req.params;
+  const success = await disableApiKey(key);
+  if (!success) {
+    return res.status(404).json({ error: "API_KEY_NOT_FOUND" });
+  }
+  res.json({ status: "disabled" });
+});
+app.post("/admin/api-keys/:key/rotate", adminAuth, async (req, res) => {
+  const { key } = req.params;
 
+  const result = await rotateApiKey(key);
+
+  if (!result) {
+    return res.status(404).json({ error: "API_KEY_NOT_FOUND_OR_INACTIVE" });
+  }
+
+  res.json(result);
+});
 
 app.post(
   "/v1/limit/check",
@@ -53,8 +68,6 @@ app.post(
 const server = app.listen(PORT, () => {
   console.log(`Gatekeeper API running on port ${PORT}`);
 });
-
-
 async function shutdown(signal) {
   if (isShuttingDown) {
     return;

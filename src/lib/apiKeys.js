@@ -54,3 +54,15 @@ export async function isApiKeyValid(apiKey) {
   return config?.status === "active";
 }
 
+export async function disableApiKey(apiKey) {
+  const key = `${API_KEY_PREFIX}${apiKey}`;
+
+  const type = await redis.type(key);
+  if (type !== "hash") {
+    return false;
+  }
+
+  await redis.hSet(key, { status: "disabled" });
+  return true;
+}
+
