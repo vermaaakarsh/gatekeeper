@@ -10,4 +10,13 @@ services:
       - /app/node_modules
     environment:
       - PORT=3002
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
     command: pnpm dev
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+  
