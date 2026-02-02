@@ -1,5 +1,8 @@
 import "dotenv/config";
 import express from "express";
+import swaggerUi from "swagger-ui-express";
+import fs from "node:fs";
+import yaml from "yaml";
 import pinoHttp from "pino-http";
 import { logger } from "./lib/logger.js";
 import { disableApiKey,generateApiKey, storeApiKey } from "./lib/apiKeys.js";
@@ -13,6 +16,9 @@ await connectRedis();
 
 const PORT = process.env.PORT || 3002;
 let isShuttingDown = false;
+const openApiPath = new URL("../openapi.yaml", import.meta.url);
+const openApiSpec = yaml.parse(fs.readFileSync(openApiPath, "utf8"));
+
 const app = express();
 
 app.use(express.json());
@@ -23,6 +29,7 @@ app.use(
   })
 );
 
+app.use("/docs", swaggerUi.serve, swaggerUi.setup(openApiSpec));
 
 app.get("/health", (req, res) => {
   res.json({ status: "ok" });
@@ -53,7 +60,6 @@ app.get("/metrics", (req, res) => {
     gatekeeper_rate_limiter_errors ${metrics.rate_limiter_errors}
   `.trim());
 });
-
 
 app.post("/admin/api-keys", adminAuth, async (req, res) => {
   const { limit, window, burst } = req.body || {};

@@ -1,0 +1,130 @@
+openapi: 3.0.3
+info:
+  title: Gatekeeper API
+  description: |
+    Gatekeeper is a Redis-backed, API-key–based rate limiting service.
+
+    It provides per-API-key rate limiting with fail-closed semantics,
+    structured logging, and Prometheus-compatible metrics.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:3002
+    description: Local development
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+    AdminAuth:
+      type: apiKey
+      in: header
+      name: X-Admin-Secret
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            retry_after_seconds:
+              type: integer
+          required:
+            - code
+            - message
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        "200":
+          description: Service is healthy
+
+  /metrics:
+    get:
+      summary: Prometheus metrics
+      responses:
+        "200":
+          description: Metrics output
+
+  /v1/limit/check:
+    post:
+      summary: Check rate limit for API key
+      security:
+        - ApiKeyAuth: []
+      responses:
+        "200":
+          description: Request allowed
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: Rate limiter unavailable
+
+  /admin/api-keys:
+    post:
+      summary: Create API key
+      security:
+        - AdminAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                limit:
+                  type: integer
+                window:
+                  type: integer
+                burst:
+                  type: integer
+      responses:
+        "201":
+          description: API key created
+
+  /admin/api-keys/{key}/disable:
+    post:
+      summary: Disable API key
+      security:
+        - AdminAuth: []
+      parameters:
+        - in: path
+          name: key
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: API key disabled
+        "404":
+          description: API key not found
+
+  /admin/api-keys/{key}/rotate:
+    post:
+      summary: Rotate API key
+      security:
+        - AdminAuth: []
+      parameters:
+        - in: path
+          name: key
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: API key rotated
+        "404":
+          description: API key not found
