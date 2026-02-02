@@ -1,4 +1,4 @@
-import crypto from "crypto";
+import crypto from "node:crypto";
 import { redis } from "./redis.js";
 
 const API_KEY_PREFIX = "api_key:";
