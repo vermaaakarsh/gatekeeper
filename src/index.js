@@ -76,7 +76,7 @@ app.post("/admin/api-keys/:key/disable", adminAuth, async (req, res) => {
   const { key } = req.params;
   const success = await disableApiKey(key);
   if (!success) {
-    return res.status(404).json({ error: "API_KEY_NOT_FOUND" });
+    return res.status(404).json(errorResponse("API_KEY_NOT_FOUND","The provided api key doesn't exists in db"));
   }
   res.json({ status: "disabled" });
 });
@@ -86,7 +86,7 @@ app.post("/admin/api-keys/:key/rotate", adminAuth, async (req, res) => {
   const result = await rotateApiKey(key);
 
   if (!result) {
-    return res.status(404).json({ error: "API_KEY_NOT_FOUND_OR_INACTIVE" });
+    return res.status(404).json(errorResponse("API_KEY_NOT_FOUND_OR_INACTIVE","Either the provided api key doesn't exists in db or is inactive"));
   }
 
   res.json(result);

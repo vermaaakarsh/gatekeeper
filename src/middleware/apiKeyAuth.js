@@ -9,16 +9,14 @@ export async function apiKeyAuth(req, res, next) {
   if (!apiKey) {
     metrics.auth_failures++;
     logger.warn({ reqId: req.id }, "missing_api_key");
-    return res.status(401).json({ error: "MISSING_API_KEY" });
+    return res.status(401).json(errorResponse("MISSING_API_KEY","The api key is not provided"));
   }
   let valid;
   try {
     valid = await isApiKeyValid(apiKey);
   } catch (err) {
     console.error("API key validation failure:", err);
-    return res.status(503).json({
-      error: "AUTH_BACKEND_UNAVAILABLE",
-    });
+    return res.status(503).json(errorResponse("AUTH_BACKEND_UNAVAILABLE","Auth service is not available"));
   }
   if (!valid) {
     metrics.auth_failures++;
@@ -26,7 +24,7 @@ export async function apiKeyAuth(req, res, next) {
       { reqId: req.id, apiKey: hashKey(apiKey) },
       "invalid_api_key"
     );
-    return res.status(403).json({ error: "INVALID_API_KEY" });
+    return res.status(403).json(errorResponse("INVALID_API_KEY","The api key is invalid"));
   }
   req.apiKey = apiKey;
   next();

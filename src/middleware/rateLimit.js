@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { checkRateLimit } from "../lib/rateLimiter.js";
 import { logger } from "../lib/logger.js";
 import { metrics } from "../lib/metrics.js";
+import { errorResponse } from "../lib/error.js";
 
 
 export function hashKey(apiKey) {
@@ -25,9 +26,12 @@ export async function rateLimit(req, res, next) {
       "rate_limiter_unavailable"
     );
 
-    return res.status(503).json({
-      error: "RATE_LIMITER_UNAVAILABLE",
-    });
+    return res.status(503).json(
+       errorResponse(
+        "RATE_LIMITER_UNAVAILABLE",
+        "Rate limiter is unavailable",
+      )
+    );
   }
 
   res.set({
@@ -52,10 +56,13 @@ export async function rateLimit(req, res, next) {
 
   if (!result.allowed) {
     metrics.requests_blocked++;
-    return res.status(429).json({
-      error: "RATE_LIMIT_EXCEEDED",
-      retry_after_seconds: result.retryAfter,
-    });
+    return res.status(429).json(
+      errorResponse(
+      "RATE_LIMIT_EXCEEDED",
+      "Too many requests",
+      { retry_after_seconds: result.retryAfter }
+    )
+);
   }else {
     metrics.requests_allowed++;
   }
