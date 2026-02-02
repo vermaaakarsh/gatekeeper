@@ -1,7 +1,9 @@
 import "dotenv/config";
 import express from "express";
+import pinoHttp from "pino-http";
+import { logger } from "./lib/logger.js";
 import { disableApiKey,generateApiKey, storeApiKey } from "./lib/apiKeys.js";
-import { connectRedis } from "./lib/redis.js";
+import { connectRedis, redis } from "./lib/redis.js";
 import { adminAuth } from "./middleware/adminAuth.js";
 import { apiKeyAuth, rotateApiKey } from "./middleware/apiKeyAuth.js";
 import { rateLimit } from "./middleware/rateLimit.js";
@@ -11,7 +13,14 @@ await connectRedis();
 const PORT = process.env.PORT || 3002;
 let isShuttingDown = false;
 const app = express();
+
 app.use(express.json());
+app.use(
+  pinoHttp({
+    logger,
+    genReqId: () => crypto.randomUUID(),
+  })
+);
 
 
 app.get("/health", (req, res) => {
@@ -66,7 +75,7 @@ app.post(
 
 
 const server = app.listen(PORT, () => {
-  console.log(`Gatekeeper API running on port ${PORT}`);
+  logger.info(`Gatekeeper API running on port ${PORT}`);
 });
 async function shutdown(signal) {
   if (isShuttingDown) {
@@ -75,27 +84,26 @@ async function shutdown(signal) {
 
   isShuttingDown = true;
 
-  console.log(`\nReceived ${signal}. Shutting down gracefully...`);
+  logger.info(`\nReceived ${signal}. Shutting down gracefully...`);
 
   server.close(async () => {
-    console.log("HTTP server closed");
+    logger.info("HTTP server closed");
 
     try {
-      const { redis } = await import("./lib/redis.js");
 
       if (redis.isOpen) {
         await redis.quit();
-        console.log("Redis connection closed");
+        logger.info("Redis connection closed");
       }
     } catch (err) {
-      console.error("Error during Redis shutdown:", err.message);
+      logger.error("Error during Redis shutdown:", err.message);
     }
 
     process.exit(0);
   });
 
   setTimeout(() => {
-    console.error("Graceful shutdown timed out. Forcing exit.");
+    logger.error("Graceful shutdown timed out. Forcing exit.");
     process.exit(1);
   }, 5000);
 }

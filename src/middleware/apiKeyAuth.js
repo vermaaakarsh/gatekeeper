@@ -1,8 +1,11 @@
 import { disableApiKey, generateApiKey, getApiKeyConfig, isApiKeyValid, storeApiKey } from "../lib/apiKeys.js";
+import { logger } from "../lib/logger.js";
+import { hashKey } from "./rateLimit.js";
 
 export async function apiKeyAuth(req, res, next) {
   const apiKey = req.header("X-API-Key");
   if (!apiKey) {
+    logger.warn({ reqId: req.id }, "missing_api_key");
     return res.status(401).json({ error: "MISSING_API_KEY" });
   }
   let valid;
@@ -15,6 +18,10 @@ export async function apiKeyAuth(req, res, next) {
     });
   }
   if (!valid) {
+    logger.warn(
+    { reqId: req.id, apiKey: hashKey(apiKey) },
+    "invalid_api_key"
+    );
     return res.status(403).json({ error: "INVALID_API_KEY" });
   }
   req.apiKey = apiKey;

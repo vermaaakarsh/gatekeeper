@@ -1,4 +1,5 @@
 import { createClient } from "redis";
+import { logger } from "./logger.js";
 
 const redisUrl = process.env.REDIS_URL;
 
@@ -20,7 +21,7 @@ export const redis = createClient({
 let isConnected = false;
 
 redis.on("error", (err) => {
-  console.error("Redis error:", err.message);
+  logger.error("Redis error:", err.message);
 });
 
 export async function connectRedis() {
@@ -29,9 +30,9 @@ export async function connectRedis() {
   try {
     await redis.connect();
     isConnected = true;
-    console.log("Connected to Redis");
+    logger.info("Connected to Redis");
   } catch (err) {
-    console.error("Initial Redis connection failed:", err.message);
+    logger.error("Initial Redis connection failed:", err.message);
     // DO NOT crash — service can still start
   }
 }
