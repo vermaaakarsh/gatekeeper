@@ -21,7 +21,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 # Create non-root user
-RUN addgroup -S app && adduser -S app -G app && RUN corepack enable
+RUN addgroup -S app && adduser -S app -G app && corepack enable
 
 # Copy only production deps
 COPY --from=deps /app/node_modules ./node_modules

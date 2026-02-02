@@ -1,4 +1,4 @@
-import { errorResponse } from "../lib/error";
+import { errorResponse } from "../lib/error.js";
 
 export function adminAuth(req, res, next) {
   const adminSecret = process.env.ADMIN_SECRET;

@@ -105,7 +105,7 @@ docker run --rm \
   -p 3002:3002 \
   -e PORT=3002 \
   -e REDIS_URL=redis://redis:6379 \
-  -e ADMIN_SECRET=supersecretadminkey \
+  -e ADMIN_SECRET=<SECURE_ADMIN_SECRET_KEY> \
   gatekeeper:prod
 ```
 
