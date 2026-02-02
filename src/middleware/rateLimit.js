@@ -1,18 +1,22 @@
 import crypto from "node:crypto";
 import { checkRateLimit } from "../lib/rateLimiter.js";
 import { logger } from "../lib/logger.js";
+import { metrics } from "../lib/metrics.js";
+
 
 export function hashKey(apiKey) {
   return crypto.createHash("sha256").update(apiKey).digest("hex").slice(0, 12);
 }
 
 export async function rateLimit(req, res, next) {
+  metrics.requests_total++;
   const start = Date.now();
   let result;
 
   try {
     result = await checkRateLimit(req.apiKey);
   } catch (err) {
+    metrics.rate_limiter_errors++;
     logger.error(
       {
         reqId: req.id,
@@ -47,11 +51,13 @@ export async function rateLimit(req, res, next) {
   );
 
   if (!result.allowed) {
+    metrics.requests_blocked++;
     return res.status(429).json({
       error: "RATE_LIMIT_EXCEEDED",
       retry_after_seconds: result.retryAfter,
     });
+  }else {
+    metrics.requests_allowed++;
   }
-
   next();
 }

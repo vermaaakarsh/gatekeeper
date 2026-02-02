@@ -7,6 +7,7 @@ import { connectRedis, redis } from "./lib/redis.js";
 import { adminAuth } from "./middleware/adminAuth.js";
 import { apiKeyAuth, rotateApiKey } from "./middleware/apiKeyAuth.js";
 import { rateLimit } from "./middleware/rateLimit.js";
+import { metrics } from "./lib/metrics.js";
 
 await connectRedis();
 
@@ -26,6 +27,33 @@ app.use(
 app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
+
+app.get("/metrics", (req, res) => {
+  res.set("Content-Type", "text/plain");
+
+    res.send(`
+    # HELP gatekeeper_requests_total Total number of requests
+    # TYPE gatekeeper_requests_total counter
+    gatekeeper_requests_total ${metrics.requests_total}
+
+    # HELP gatekeeper_requests_allowed Allowed requests
+    # TYPE gatekeeper_requests_allowed counter
+    gatekeeper_requests_allowed ${metrics.requests_allowed}
+
+    # HELP gatekeeper_requests_blocked Blocked requests
+    # TYPE gatekeeper_requests_blocked counter
+    gatekeeper_requests_blocked ${metrics.requests_blocked}
+
+    # HELP gatekeeper_auth_failures Authentication failures
+    # TYPE gatekeeper_auth_failures counter
+    gatekeeper_auth_failures ${metrics.auth_failures}
+
+    # HELP gatekeeper_rate_limiter_errors Backend rate limiter errors
+    # TYPE gatekeeper_rate_limiter_errors counter
+    gatekeeper_rate_limiter_errors ${metrics.rate_limiter_errors}
+  `.trim());
+});
+
 
 app.post("/admin/api-keys", adminAuth, async (req, res) => {
   const { limit, window, burst } = req.body || {};
