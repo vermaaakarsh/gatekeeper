@@ -19,11 +19,26 @@ app.get("/health", (req, res) => {
 });
 
 app.post("/admin/api-keys", adminAuth, async (req, res) => {
-  const apiKey = generateApiKey();
-  await storeApiKey(apiKey);
+  const { limit, window, burst } = req.body || {};
 
-  res.status(201).json({ apiKey });
+  const apiKey = generateApiKey();
+
+  await storeApiKey(apiKey, {
+    limit,
+    window,
+    burst,
+  });
+
+  res.status(201).json({
+    apiKey,
+    limits: {
+      limit: limit ?? "default",
+      window: window ?? "default",
+      burst: burst ?? "default",
+    },
+  });
 });
+
 
 app.post(
   "/v1/limit/check",

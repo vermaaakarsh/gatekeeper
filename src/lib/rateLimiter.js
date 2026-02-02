@@ -1,15 +1,27 @@
 import { redis } from "./redis.js";
-
-const LIMIT = 100;          // requests
-const WINDOW_SECONDS = 60; // per minute
-const BURST = 20;
-
-export const RATE_LIMIT = LIMIT + BURST;
+import { getApiKeyConfig } from "./apiKeys.js";
 
 export async function checkRateLimit(apiKey) {
-  const key = `bucket:${apiKey}`;
   const now = Math.floor(Date.now() / 1000);
 
+  // Load per-key configuration
+  const config = await getApiKeyConfig(apiKey);
+
+  if (config?.status !== "active") {
+    return {
+      allowed: false,
+      limit: 0,
+      remaining: 0,
+      resetAt: now,
+    };
+  }
+
+  const LIMIT = config.limit;
+  const WINDOW_SECONDS = config.window;
+  const BURST = config.burst;
+  const RATE_LIMIT = LIMIT + BURST;
+
+  const key = `bucket:${apiKey}`;
   const bucket = await redis.hGetAll(key);
 
   // First request for this key
