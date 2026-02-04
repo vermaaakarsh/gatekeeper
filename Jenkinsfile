@@ -9,7 +9,7 @@ pipeline {
   environment {
     NODE_ENV = "development"
     APP_NAME   = "gatekeeper"
-    AWS_REGION = "ap-south-1"
+    AWS_REGION = "us-east-1"
     ECR_REPO   = "personal/gatekeeper"
     AWS_ACCOUNT_ID = "058264153265"
   }
