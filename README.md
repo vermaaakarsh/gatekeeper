@@ -1,7 +1,8 @@
 # Gatekeeper API
 
 Gatekeeper is a **production‑grade API key management and rate‑limiting service**
-built with **Node.js, Redis, and Redis Lua**.  
+built with **Node.js, Redis, and Redis Lua**.
+It is docker and Jenkins backed.  
 It is designed to run as an **independent infrastructure service** that other
 products can rely on safely.
 
