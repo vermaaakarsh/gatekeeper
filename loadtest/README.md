@@ -1,4 +1,3 @@
-
 # Gatekeeper Load Tests
 
 This directory contains **optional load tests** used to validate

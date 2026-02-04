@@ -5,7 +5,7 @@ services:
     env_file:
       - .env
     ports:
-      - "3002:3002"
+      - '3002:3002'
     volumes:
       - .:/app
       - /app/node_modules
@@ -17,5 +17,4 @@ services:
     container_name: gatekeeper-redis
     image: redis:7-alpine
     ports:
-      - "6379:6379"
-  
+      - '6379:6379'

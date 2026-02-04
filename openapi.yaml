@@ -77,7 +77,7 @@ paths:
     get:
       summary: Health check
       responses:
-        "200":
+        '200':
           description: Service is healthy
           content:
             application/json:
@@ -92,7 +92,7 @@ paths:
     get:
       summary: Prometheus metrics
       responses:
-        "200":
+        '200':
           description: Metrics output
           content:
             text/plain:
@@ -105,36 +105,36 @@ paths:
       security:
         - ApiKeyAuth: []
       responses:
-        "200":
+        '200':
           description: Request allowed
           headers:
             X-RateLimit-Limit:
-              $ref: "#/components/headers/X-RateLimit-Limit"
+              $ref: '#/components/headers/X-RateLimit-Limit'
             X-RateLimit-Remaining:
-              $ref: "#/components/headers/X-RateLimit-Remaining"
+              $ref: '#/components/headers/X-RateLimit-Remaining'
             X-RateLimit-Reset:
-              $ref: "#/components/headers/X-RateLimit-Reset"
+              $ref: '#/components/headers/X-RateLimit-Reset'
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/RateLimitDecision"
+                $ref: '#/components/schemas/RateLimitDecision'
 
-        "429":
+        '429':
           description: Rate limit exceeded
           headers:
             Retry-After:
-              $ref: "#/components/headers/Retry-After"
+              $ref: '#/components/headers/Retry-After'
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
 
-        "503":
+        '503':
           description: Rate limiter unavailable
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
 
   /admin/api-keys:
     post:
@@ -155,7 +155,7 @@ paths:
                 burst:
                   type: integer
       responses:
-        "201":
+        '201':
           description: API key created
           content:
             application/json:
@@ -177,7 +177,7 @@ paths:
           schema:
             type: string
       responses:
-        "200":
+        '200':
           description: API key disabled
           content:
             application/json:
@@ -187,12 +187,12 @@ paths:
                   status:
                     type: string
                     example: disabled
-        "404":
+        '404':
           description: API key not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
 
   /admin/api-keys/{key}/rotate:
     post:
@@ -206,7 +206,7 @@ paths:
           schema:
             type: string
       responses:
-        "200":
+        '200':
           description: API key rotated
           content:
             application/json:
@@ -226,9 +226,9 @@ paths:
                         type: integer
                       burst:
                         type: integer
-        "404":
+        '404':
           description: API key not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
