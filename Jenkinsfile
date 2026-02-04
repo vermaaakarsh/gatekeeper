@@ -11,6 +11,7 @@ pipeline {
     APP_NAME   = "gatekeeper"
     AWS_REGION = "ap-south-1"
     ECR_REPO   = "personal/gatekeeper"
+    AWS_ACCOUNT_ID = "058264153265"
   }
 
   stages {
