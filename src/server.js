@@ -1,25 +1,21 @@
-import express from "express";
-import swaggerUi from "swagger-ui-express";
-import fs from "node:fs";
-import yaml from "yaml";
-import crypto from "node:crypto";
-import pinoHttp from "pino-http";
+import express from 'express';
+import swaggerUi from 'swagger-ui-express';
+import fs from 'node:fs';
+import yaml from 'yaml';
+import crypto from 'node:crypto';
+import pinoHttp from 'pino-http';
 
-import { logger } from "./lib/logger.js";
-import { connectRedis, redis } from "./lib/redis.js";
-import { loadRateLimiterScript } from "./lib/lua.js";
-import { metrics } from "./lib/metrics.js";
-import { errorResponse } from "./lib/error.js";
+import { logger } from './lib/logger.js';
+import { connectRedis, redis } from './lib/redis.js';
+import { loadRateLimiterScript } from './lib/lua.js';
+import { metrics } from './lib/metrics.js';
+import { errorResponse } from './lib/error.js';
 
-import {
-  generateApiKey,
-  storeApiKey,
-  disableApiKey,
-} from "./lib/apiKeys.js";
+import { generateApiKey, storeApiKey, disableApiKey } from './lib/apiKeys.js';
 
-import { adminAuth } from "./middleware/adminAuth.js";
-import { apiKeyAuth, rotateApiKey } from "./middleware/apiKeyAuth.js";
-import { rateLimit } from "./middleware/rateLimit.js";
+import { adminAuth } from './middleware/adminAuth.js';
+import { apiKeyAuth, rotateApiKey } from './middleware/apiKeyAuth.js';
+import { rateLimit } from './middleware/rateLimit.js';
 
 let server;
 let isShuttingDown = false;
@@ -30,10 +26,8 @@ export async function createServer() {
   await loadRateLimiterScript();
 
   // 2️⃣ Load OpenAPI spec
-  const openApiPath = new URL("../openapi.yaml", import.meta.url);
-  const openApiSpec = yaml.parse(
-    fs.readFileSync(openApiPath, "utf8")
-  );
+  const openApiPath = new URL('../openapi.yaml', import.meta.url);
+  const openApiSpec = yaml.parse(fs.readFileSync(openApiPath, 'utf8'));
 
   // 3️⃣ Create app
   const app = express();
@@ -47,16 +41,17 @@ export async function createServer() {
   );
 
   // 4️⃣ Docs
-  app.use("/docs", swaggerUi.serve, swaggerUi.setup(openApiSpec));
+  app.use('/docs', swaggerUi.serve, swaggerUi.setup(openApiSpec));
 
   // 5️⃣ Core routes
-  app.get("/health", (req, res) => {
-    res.json({ status: "ok" });
+  app.get('/health', (req, res) => {
+    res.json({ status: 'ok' });
   });
 
-  app.get("/metrics", (req, res) => {
-    res.set("Content-Type", "text/plain");
-    res.send(`
+  app.get('/metrics', (req, res) => {
+    res.set('Content-Type', 'text/plain');
+    res.send(
+      `
 # HELP gatekeeper_requests_total Total number of requests
 # TYPE gatekeeper_requests_total counter
 gatekeeper_requests_total ${metrics.requests_total}
@@ -76,11 +71,12 @@ gatekeeper_auth_failures ${metrics.auth_failures}
 # HELP gatekeeper_rate_limiter_errors Backend rate limiter errors
 # TYPE gatekeeper_rate_limiter_errors counter
 gatekeeper_rate_limiter_errors ${metrics.rate_limiter_errors}
-`.trim());
+`.trim()
+    );
   });
 
   // 6️⃣ Admin routes
-  app.post("/admin/api-keys", adminAuth, async (req, res) => {
+  app.post('/admin/api-keys', adminAuth, async (req, res) => {
     const { limit, window, burst } = req.body || {};
     const apiKey = generateApiKey();
 
@@ -89,14 +85,14 @@ gatekeeper_rate_limiter_errors ${metrics.rate_limiter_errors}
     res.status(201).json({
       apiKey,
       limits: {
-        limit: limit ?? "default",
-        window: window ?? "default",
-        burst: burst ?? "default",
+        limit: limit ?? 'default',
+        window: window ?? 'default',
+        burst: burst ?? 'default',
       },
     });
   });
 
-  app.post("/admin/api-keys/:key/disable", adminAuth, async (req, res) => {
+  app.post('/admin/api-keys/:key/disable', adminAuth, async (req, res) => {
     const success = await disableApiKey(req.params.key);
 
     if (!success) {
@@ -104,16 +100,16 @@ gatekeeper_rate_limiter_errors ${metrics.rate_limiter_errors}
         .status(404)
         .json(
           errorResponse(
-            "API_KEY_NOT_FOUND",
+            'API_KEY_NOT_FOUND',
             "The provided api key doesn't exist"
           )
         );
     }
 
-    res.json({ status: "disabled" });
+    res.json({ status: 'disabled' });
   });
 
-  app.post("/admin/api-keys/:key/rotate", adminAuth, async (req, res) => {
+  app.post('/admin/api-keys/:key/rotate', adminAuth, async (req, res) => {
     const result = await rotateApiKey(req.params.key);
 
     if (!result) {
@@ -121,8 +117,8 @@ gatekeeper_rate_limiter_errors ${metrics.rate_limiter_errors}
         .status(404)
         .json(
           errorResponse(
-            "API_KEY_NOT_FOUND_OR_INACTIVE",
-            "API key not found or inactive"
+            'API_KEY_NOT_FOUND_OR_INACTIVE',
+            'API key not found or inactive'
           )
         );
     }
@@ -131,14 +127,9 @@ gatekeeper_rate_limiter_errors ${metrics.rate_limiter_errors}
   });
 
   // 7️⃣ Rate limiting
-  app.post(
-    "/v1/limit/check",
-    apiKeyAuth,
-    rateLimit,
-    (req, res) => {
-      res.json({ allowed: true });
-    }
-  );
+  app.post('/v1/limit/check', apiKeyAuth, rateLimit, (req, res) => {
+    res.json({ allowed: true });
+  });
 
   // 8️⃣ Start server
   const PORT = process.env.PORT || 3002;
@@ -157,22 +148,22 @@ export async function shutdown(signal) {
   logger.info(`\nReceived ${signal}. Shutting down gracefully...`);
 
   server.close(async () => {
-    logger.info("HTTP server closed");
+    logger.info('HTTP server closed');
 
     try {
       if (redis.isOpen) {
         await redis.quit();
-        logger.info("Redis connection closed");
+        logger.info('Redis connection closed');
       }
     } catch (err) {
-      logger.error("Error during Redis shutdown", err);
+      logger.error('Error during Redis shutdown', err);
     }
 
     process.exit(0);
   });
 
   setTimeout(() => {
-    logger.error("Graceful shutdown timed out");
+    logger.error('Graceful shutdown timed out');
     process.exit(1);
   }, 5000);
 }

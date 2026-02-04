@@ -1,7 +1,7 @@
-
 # Operations Guide – Gatekeeper
 
 ## 1. Purpose
+
 This document describes how Gatekeeper is expected to be run, monitored,
 and operated in production environments.
 
@@ -10,6 +10,7 @@ and operated in production environments.
 ## 2. Startup Requirements
 
 Required environment variables:
+
 - `PORT`
 - `REDIS_URL`
 - `ADMIN_SECRET`
@@ -21,10 +22,12 @@ Startup will fail if Redis is unavailable.
 ## 3. Health & Monitoring
 
 ### Health Endpoint
+
 - `GET /health`
 - Indicates process liveness only
 
 ### Metrics Endpoint
+
 - `GET /metrics`
 - Prometheus-compatible counters
 
@@ -50,11 +53,11 @@ Logs are intended for centralized aggregation.
 
 ## 6. Failure Modes
 
-| Failure | Behavior |
-|------|--------|
-| Redis unavailable | Requests rejected |
-| Instance crash | Traffic rerouted |
-| High traffic | Rate limits enforced |
+| Failure           | Behavior             |
+| ----------------- | -------------------- |
+| Redis unavailable | Requests rejected    |
+| Instance crash    | Traffic rerouted     |
+| High traffic      | Rate limits enforced |
 
 ---
 

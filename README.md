@@ -1,4 +1,3 @@
-
 # Gatekeeper API
 
 Gatekeeper is a **production‑grade API key management and rate‑limiting service**
@@ -13,6 +12,7 @@ products can rely on safely.
 > “I need to protect my APIs with API keys and rate limits that are **correct under concurrency**, observable, and reliable in production.”
 
 Gatekeeper provides:
+
 - Secure API key issuance and lifecycle management
 - Atomic, race‑free rate limiting using Redis Lua
 - Clear error responses and HTTP‑standard headers
@@ -46,12 +46,14 @@ Clients → Gatekeeper API (Node.js) → Redis → Redis Lua Script
 ## 🚀 Features
 
 ### API Key Management
+
 - Create API keys (admin‑only)
 - Disable API keys
 - Rotate API keys
 - Per‑key rate limit configuration
 
 ### Rate Limiting
+
 - Token bucket algorithm
 - Burst support
 - Atomic enforcement using Redis Lua
@@ -62,6 +64,7 @@ Clients → Gatekeeper API (Node.js) → Redis → Redis Lua Script
   - Retry‑After
 
 ### Observability
+
 - Structured JSON logs
 - Prometheus‑style metrics
 - Health endpoint
@@ -71,9 +74,11 @@ Clients → Gatekeeper API (Node.js) → Redis → Redis Lua Script
 ## 🔐 Authentication
 
 ### Admin Authentication
+
 X‑Admin‑Secret: <ADMIN_SECRET>
 
 ### Client Authentication
+
 X‑API‑Key: <API_KEY>
 
 ---
@@ -85,7 +90,7 @@ GET /metrics
 POST /admin/api-keys  
 POST /admin/api-keys/:key/disable  
 POST /admin/api-keys/:key/rotate  
-POST /v1/limit/check  
+POST /v1/limit/check
 
 Swagger UI available at `/docs`.
 

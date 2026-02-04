@@ -1,4 +1,3 @@
-
 # Architectural Decisions – Gatekeeper
 
 This document records major architectural decisions and their rationale.
@@ -10,6 +9,7 @@ This document records major architectural decisions and their rationale.
 **Decision**: Use Redis Lua scripts for rate limiting  
 **Reason**: Guarantees atomicity under concurrency  
 **Alternatives Considered**:
+
 - In-process counters (rejected: race conditions)
 - Database-backed limits (rejected: latency)
 

@@ -1,12 +1,12 @@
-import { redis } from "./redis.js";
-import { getApiKeyConfig } from "./apiKeys.js";
-import { rateLimiterSha, luaScript } from "./lua.js";
+import { redis } from './redis.js';
+import { getApiKeyConfig } from './apiKeys.js';
+import { rateLimiterSha, luaScript } from './lua.js';
 
 export async function checkRateLimit(apiKey) {
   const config = await getApiKeyConfig(apiKey);
   const now = Math.floor(Date.now() / 1000);
 
-  if (config?.status !== "active") {
+  if (config?.status !== 'active') {
     return {
       allowed: false,
       limit: 0,
@@ -18,18 +18,15 @@ export async function checkRateLimit(apiKey) {
   const bucketKey = `bucket:${apiKey}`;
 
   try {
-    const result = await redis.evalSha(
-      rateLimiterSha,
-      {
-        keys: [bucketKey],
-        arguments: [
-          now.toString(),
-          config.limit.toString(),
-          config.window.toString(),
-          config.burst.toString(),
-        ],
-      }
-    );
+    const result = await redis.evalSha(rateLimiterSha, {
+      keys: [bucketKey],
+      arguments: [
+        now.toString(),
+        config.limit.toString(),
+        config.window.toString(),
+        config.burst.toString(),
+      ],
+    });
 
     const [allowed, remaining, resetAt, retryAfter] = result;
 
@@ -42,7 +39,7 @@ export async function checkRateLimit(apiKey) {
     };
   } catch (err) {
     // Redis restarted, script missing
-    if (err?.message?.includes("NOSCRIPT")) {
+    if (err?.message?.includes('NOSCRIPT')) {
       await redis.scriptLoad(luaScript);
 
       return checkRateLimit(apiKey);
