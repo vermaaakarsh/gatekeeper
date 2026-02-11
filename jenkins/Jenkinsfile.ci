@@ -82,19 +82,8 @@ pipeline {
     success {
       script {
         if (env.BRANCH_NAME == "master") {
-
-          def infraChanged = sh(
-            script: "git diff --name-only origin/master~1 origin/master | grep '^infra/' || true",
-            returnStdout: true
-            ).trim()
-
-          if (infraChanged) {
-            echo "✅ Infra changes detected. Triggering Infra pipeline."
-            build job: 'gatekeeper-infra', wait: false
-          } else {
-            echo "✅ No infra changes. Triggering CD directly."
-            build job: 'gatekeeper-cd', wait: false
-          }
+          echo "✅ CI successful. Triggering Infra pipeline."
+          build job: 'gatekeeper-infra', wait: false
         }
       }
     }

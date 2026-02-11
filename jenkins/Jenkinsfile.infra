@@ -29,6 +29,12 @@ pipeline {
     }
 
     stage("Terraform Init") {
+      when {
+        allOf {
+          branch "master"
+          changeset "infra/**"
+        }
+      }
       steps {
         dir("infra/terraform") {
           sh "terraform init -input=false"
@@ -37,6 +43,12 @@ pipeline {
     }
 
     stage("Terraform Plan") {
+      when {
+        allOf {
+          branch "master"
+          changeset "infra/**"
+        }
+      }
       steps {
         dir("infra/terraform") {
           sh "terraform plan -out=tfplan -input=false"
@@ -45,12 +57,24 @@ pipeline {
     }
 
     stage("Manual Approval") {
+      when {
+        allOf {
+          branch "master"
+          changeset "infra/**"
+        }
+      }
       steps {
         input message: "Approve Infrastructure Changes?"
       }
     }
 
     stage("Terraform Apply") {
+      when {
+        allOf {
+          branch "master"
+          changeset "infra/**"
+        }
+      }
       steps {
         dir("infra/terraform") {
           sh "terraform apply -input=false -auto-approve tfplan"
@@ -61,8 +85,10 @@ pipeline {
 
   post {
   success {
-    echo "✅ Infra applied successfully. Triggering CD."
-    build job: 'gatekeeper-cd', wait: false
+    script {
+      echo "✅ Infra applied successfully. Triggering CD."
+      build job: 'gatekeeper-cd', wait: false
+    }
   }
   failure {
     echo "❌ Infrastructure failed."
