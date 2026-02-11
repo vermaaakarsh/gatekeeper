@@ -17,17 +17,6 @@ pipeline {
   }
 
   stages {
-
-    stage("Run Only On Master") {
-      when {
-        not { branch "master" }
-      }
-      steps {
-        echo "Not on master branch. Skipping deployment."
-        script { currentBuild.result = 'SUCCESS' }
-      }
-    }
-
     stage("Checkout") {
       steps { checkout scm }
     }
@@ -35,15 +24,22 @@ pipeline {
     stage("Resolve Image Tag") {
       steps {
         script {
-          IMAGE_TAG = sh(
+          def imageTag = sh(
             script: "node -p \"require('./package.json').version\"",
             returnStdout: true
           ).trim()
 
-          IMAGE_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${IMAGE_TAG}"
+          if (!imageTag) {
+            error("package.json version not found")
+          }
+
+          env.IMAGE_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${imageTag}"
+
+          echo "Deploying image: ${env.IMAGE_URI}"
         }
       }
     }
+
 
     stage("Fetch Task Definition") {
       steps {
@@ -61,7 +57,7 @@ pipeline {
       steps {
         sh """
           cat task-definition.json \
-          | jq --arg IMAGE "${IMAGE_URI}" \
+          | jq --arg IMAGE "${env.IMAGE_URI}" \
             '.containerDefinitions[0].image = $IMAGE
              | del(.taskDefinitionArn)
              | del(.revision)
