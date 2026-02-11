@@ -61,10 +61,11 @@ pipeline {
 
   post {
   success {
-    echo "✅Infrastructure stable."
+    echo "✅ Infra applied successfully. Triggering CD."
+    build job: 'gatekeeper-cd', wait: false
   }
   failure {
-    echo "❌Infrastructure failed."
+    echo "❌ Infrastructure failed."
   }
   always {
     cleanWs()

@@ -78,16 +78,25 @@ pipeline {
   post {
     success {
       script {
-      if (env.BRANCH_NAME == "master") {
-        echo "✅CI succeeded on master. Triggering CD..."
-        build job: 'gatekeeper-cd', wait: false
-      } else {
-        echo "✅CI succeeded on ${env.BRANCH_NAME}. Not triggering CD."
+        if (env.BRANCH_NAME == "master") {
+
+          def infraChanged = sh(
+            script: "git diff --name-only HEAD~1 HEAD | grep '^infra/' || true",
+            returnStdout: true
+          ).trim()
+
+          if (infraChanged) {
+            echo "✅ Infra changes detected. Triggering Infra pipeline."
+            build job: 'gatekeeper-infra', wait: false
+          } else {
+            echo "✅ No infra changes. Triggering CD directly."
+            build job: 'gatekeeper-cd', wait: false
+          }
+        }
       }
     }
-    }
     failure {
-      echo "❌CI failed."
+      echo "❌ CI failed."
     }
     always {
       cleanWs()
