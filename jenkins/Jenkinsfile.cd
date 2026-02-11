@@ -18,24 +18,13 @@ pipeline {
 
   stages {
 
-    stage("Run Only On Master") {
-      when {
-        not { branch "master" }
-      }
-      steps {
-        echo "Not on master branch. Skipping deployment."
-      }
-    }
-
     stage("Checkout") {
-      when { branch "master" }
       steps {
         checkout scm
       }
     }
 
     stage("Resolve Image Tag") {
-      when { branch "master" }
       steps {
         script {
           def imageTag = sh(
@@ -55,7 +44,6 @@ pipeline {
     }
 
     stage("Fetch Task Definition") {
-      when { branch "master" }
       steps {
         sh """
           aws ecs describe-task-definition \
@@ -67,7 +55,6 @@ pipeline {
     }
 
     stage("Register New Revision") {
-      when { branch "master" }
       steps {
         script {
           def revisionArn = sh(
@@ -101,7 +88,6 @@ pipeline {
     }
 
     stage("Deploy") {
-      when { branch "master" }
       steps {
         sh """
           aws ecs update-service \
@@ -114,7 +100,6 @@ pipeline {
     }
 
     stage("Wait For Stability") {
-      when { branch "master" }
       steps {
         sh """
           aws ecs wait services-stable \
