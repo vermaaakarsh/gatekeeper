@@ -1,10 +1,9 @@
-# Security Model & Hardening – Gatekeeper
+# Security Model & Hardening -- Gatekeeper
 
 ## 1. Purpose
 
 This document describes the security assumptions, threat model, and
-hardening decisions for Gatekeeper. It clarifies what the system protects,
-what it does not, and why.
+hardening decisions for Gatekeeper.
 
 ---
 
@@ -33,8 +32,7 @@ what it does not, and why.
 - Single shared secret
 - Full administrative access
 
-**Risk**: Compromise grants full control  
-**Mitigation**: Secret rotation, environment isolation
+Mitigation: Secret rotation and environment isolation.
 
 ### Client Authentication
 
@@ -46,13 +44,13 @@ what it does not, and why.
 
 ## 4. Rate Limiting as a Security Control
 
-Rate limiting protects against:
+Protects against:
 
 - Abuse
 - Credential stuffing
 - Accidental overload
 
-Atomic enforcement using Redis Lua prevents bypass under concurrency.
+Atomic enforcement using Redis Lua prevents concurrency bypass.
 
 ---
 
@@ -61,49 +59,66 @@ Atomic enforcement using Redis Lua prevents bypass under concurrency.
 If Redis or the rate limiter is unavailable:
 
 - Requests are rejected
-- No traffic is allowed by default
-
-This avoids silent security failures.
+- No traffic allowed by default
 
 ---
 
 ## 6. Secrets Handling
 
-- Secrets are provided via environment variables
-- No secrets are logged
-- No secrets are hardcoded
+- Secrets stored in AWS Secrets Manager
+- Injected into ECS via task definition `secrets` block
+- No secrets in source code
+- No secrets in Terraform state
 
 ---
 
-## 7. Denial of Service Considerations
+## 7. Network Isolation
+
+- ECS tasks run in private subnets
+- No public IP assigned
+- Only ALB is publicly accessible
+
+---
+
+## 8. IAM Least Privilege
+
+ECS Execution Role permissions:
+
+- Pull from ECR
+- Write to CloudWatch Logs
+- Read from Secrets Manager
+
+---
+
+## 9. Denial of Service Considerations
 
 - Rate limits bound request volume
-- Redis is the only shared bottleneck
-- No unbounded in-memory structures exist
+- Redis is the primary shared dependency
+- No unbounded memory structures
 
 ---
 
-## 8. Non-Goals
+## 10. Non-Goals
 
 Gatekeeper intentionally does not:
 
-- Encrypt traffic (TLS is delegated to infrastructure)
+- Terminate TLS (handled by infrastructure)
 - Perform user authentication
 - Inspect request payloads
 - Provide IP-based filtering
 
 ---
 
-## 9. Security Review Checklist
+## 11. Security Review Checklist
 
 - [ ] Redis access restricted
 - [ ] Admin secret rotated regularly
-- [ ] Metrics endpoint protected if needed
+- [ ] Secrets stored only in Secrets Manager
 - [ ] Logs monitored for anomalies
 
 ---
 
-## 10. Summary
+## 12. Summary
 
-Gatekeeper follows a minimal, explicit security model focused on correctness,
-clarity, and predictable failure behavior.
+Gatekeeper follows a minimal, explicit security model focused on
+correctness, clarity, and predictable failure behavior.

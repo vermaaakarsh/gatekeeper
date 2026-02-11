@@ -38,3 +38,12 @@ variable "desired_count" {
   type        = number
   default     = 2
 }
+
+variable "container_secrets" {
+  description = "Environment variables for ECS container"
+  type = list(object({
+    name  = string
+    value = string
+  }))
+  default = []
+}

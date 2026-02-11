@@ -6,14 +6,25 @@ info:
     Gatekeeper is a production-grade, Redis-backed API key and
     rate-limiting service.
 
-    It provides per-API-key rate limiting with **fail-closed semantics**,
-    **atomic enforcement using Redis Lua**, structured logging,
+    It provides per-API-key rate limiting with fail-closed semantics,
+    atomic enforcement using Redis Lua, structured logging,
     and Prometheus-compatible metrics.
+
+    Versioning Strategy:
+    URI-based versioning (/v1/).
   version: 1.0.0
 
 servers:
   - url: http://localhost:3002
     description: Local development
+
+tags:
+  - name: Public
+    description: Public rate-limiting endpoints
+  - name: Admin
+    description: Administrative API key management
+  - name: Observability
+    description: Health and metrics endpoints
 
 components:
   securitySchemes:
@@ -39,8 +50,10 @@ components:
           properties:
             code:
               type: string
+              example: RATE_LIMIT_EXCEEDED
             message:
               type: string
+              example: Too many requests
             details:
               type: object
               additionalProperties: true
@@ -50,6 +63,7 @@ components:
       properties:
         allowed:
           type: boolean
+          example: true
 
   headers:
     X-RateLimit-Limit:
@@ -72,9 +86,18 @@ components:
       schema:
         type: integer
 
+  responses:
+    UnauthorizedError:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
 paths:
   /health:
     get:
+      tags: [Observability]
       summary: Health check
       responses:
         '200':
@@ -90,6 +113,7 @@ paths:
 
   /metrics:
     get:
+      tags: [Observability]
       summary: Prometheus metrics
       responses:
         '200':
@@ -101,6 +125,7 @@ paths:
 
   /v1/limit/check:
     post:
+      tags: [Public]
       summary: Check rate limit for API key
       security:
         - ApiKeyAuth: []
@@ -119,9 +144,18 @@ paths:
               schema:
                 $ref: '#/components/schemas/RateLimitDecision'
 
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
         '429':
           description: Rate limit exceeded
           headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
             Retry-After:
               $ref: '#/components/headers/Retry-After'
           content:
@@ -130,7 +164,9 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
         '503':
-          description: Rate limiter unavailable
+          description: |
+            Rate limiter unavailable (fail-closed behavior).
+            Requests are rejected when Redis is unreachable.
           content:
             application/json:
               schema:
@@ -138,6 +174,7 @@ paths:
 
   /admin/api-keys:
     post:
+      tags: [Admin]
       summary: Create API key
       security:
         - AdminAuth: []
@@ -164,9 +201,12 @@ paths:
                 properties:
                   apiKey:
                     type: string
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
 
   /admin/api-keys/{key}/disable:
     post:
+      tags: [Admin]
       summary: Disable API key
       security:
         - AdminAuth: []
@@ -187,6 +227,8 @@ paths:
                   status:
                     type: string
                     example: disabled
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
         '404':
           description: API key not found
           content:
@@ -196,6 +238,7 @@ paths:
 
   /admin/api-keys/{key}/rotate:
     post:
+      tags: [Admin]
       summary: Rotate API key
       security:
         - AdminAuth: []
@@ -226,6 +269,8 @@ paths:
                         type: integer
                       burst:
                         type: integer
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
         '404':
           description: API key not found
           content:

@@ -1,117 +1,69 @@
-# Gatekeeper Architecture & Design Document
+# Architecture
 
-## 1. Overview
+## 1. Request Flow
 
-Gatekeeper is a standalone infrastructure service that provides API key
-management and rate limiting with strong correctness guarantees under
-concurrency. It is designed to be deployed independently and consumed by
-other systems via HTTP.
-
----
-
-## 2. Design Goals
-
-- Correctness under concurrency
-- Fail-closed behavior
-- Environment-driven configuration
-- Production parity across environments
+Client  
+↓  
+ALB (Layer 7 routing)  
+↓  
+ECS Fargate Task  
+↓  
+Redis  
+↓  
+Lua Script (atomic rate limiter)
 
 ---
 
-## 3. Architecture
+## 2. Rate Limiting Implementation
 
-Client → Gatekeeper API → Redis → Lua Script
+Gatekeeper uses Redis Lua scripting for atomicity.
 
-- Node.js handles HTTP, auth, logging, metrics
-- Redis stores shared state
-- Lua enforces atomic rate limits
+Why Lua?
 
----
+Because naive rate limiting using:
 
-## 4. Why Redis + Lua
+- GET
+- INCR
+- EXPIRE
 
-Lua scripts execute atomically inside Redis, eliminating race conditions
-that occur with JS-only implementations under concurrent load.
+can cause race conditions under concurrency.
 
----
+The Lua script ensures:
 
-## 5. Rate Limiting Model
-
-Token bucket with:
-
-- limit
-- window
-- burst
-
-All invariants are enforced inside Redis.
+- Increment + expiration logic is atomic
+- Accurate window handling
+- No double increments
+- Correct behavior under burst traffic
 
 ---
 
-## 6. API Key Lifecycle
+## 3. Failure Behavior
 
-Keys can be created, disabled, and rotated.
-Rotation invalidates the old key while preserving limits.
+If Redis is unreachable:
 
----
+- Requests are rejected
+- System fails closed
 
-## 7. Authentication
-
-- Admin: X-Admin-Secret
-- Client: X-API-Key
+This prevents accidental unlimited access.
 
 ---
 
-## 8. Observability
+## 4. Deployment Architecture
 
-- Structured logs
-- Prometheus metrics
-- Health endpoint
+Public Subnets:
 
----
+- ALB
 
-## 9. Error Model
+Private Subnets:
 
-Consistent error shape with code, message, and optional details.
+- ECS tasks
 
----
+VPC Interface Endpoints:
 
-## 10. Docker & Runtime
+- ECR API
+- ECR Docker
+- CloudWatch Logs
 
-- Immutable images
-- External Redis
-- No orchestration assumptions
+No NAT gateway.
 
----
-
-## 11. Testing Strategy
-
-- Unit tests for pure logic
-- Integration tests with real Redis
-- Load tests with k6 (external)
-
----
-
-## 12. CI/CD Readiness
-
-Tests spin up dependencies automatically and require no manual setup.
-
----
-
-## 13. Non-Goals
-
-Gatekeeper does not act as an API gateway or user auth system.
-
----
-
-## 14. Future Work
-
-- Per-route limits
-- Tiered plans
-- Tracing
-
----
-
-## 15. Summary
-
-Gatekeeper is infrastructure-focused, correctness-first, and safe to
-depend on in production.
+ECS tasks have no public IP.
