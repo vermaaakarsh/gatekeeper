@@ -76,12 +76,22 @@ module "ecs" {
   container_secrets = [
     {
       name      = "REDIS_URL"
+      valueFrom = "arn:aws:secretsmanager:us-east-1:058264153265:secret:gatekeeper/prod/app-secrets:REDIS_URL::"
+    },
+    {
       name      = "PORT"
+      valueFrom = "arn:aws:secretsmanager:us-east-1:058264153265:secret:gatekeeper/prod/app-secrets:PORT::"
+    },
+    {
       name      = "ADMIN_SECRET"
+      valueFrom = "arn:aws:secretsmanager:us-east-1:058264153265:secret:gatekeeper/prod/app-secrets:ADMIN_SECRET::"
+    },
+    {
       name      = "NODE_ENV"
-      valueFrom = "arn:aws:secretsmanager:us-east-1:058264153265:secret:gatekeeper/prod/app-secrets"
+      valueFrom = "arn:aws:secretsmanager:us-east-1:058264153265:secret:gatekeeper/prod/app-secrets:NODE_ENV::"
     }
   ]
+
 
 
   project_name       = var.project_name

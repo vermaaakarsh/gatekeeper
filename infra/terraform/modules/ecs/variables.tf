@@ -40,10 +40,10 @@ variable "desired_count" {
 }
 
 variable "container_secrets" {
-  description = "Environment variables for ECS container"
   type = list(object({
-    name  = string
-    value = string
+    name      = string
+    valueFrom = string
   }))
   default = []
 }
+
