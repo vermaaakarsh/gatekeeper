@@ -36,15 +36,18 @@ pipeline {
         }
       }
       steps {
-        script {
-          IMAGE_TAG = sh(
-            script: "node -p \"require('./package.json').version\"",
-            returnStdout: true
-          ).trim()
+          script {
+            def imageTag = sh(
+                script: "node -p \"require('./package.json').version\"",
+                returnStdout: true
+            ).trim()
 
-          IMAGE_URI = "${APP_NAME}:${IMAGE_TAG}"
+            def imageUri = "${APP_NAME}:${imageTag}"
 
-          sh "docker build -t ${IMAGE_URI} ."
+            sh "docker build -t ${imageUri} ."
+
+            env.IMAGE_TAG = imageTag
+            env.IMAGE_URI = imageUri
         }
       }
     }
@@ -81,9 +84,9 @@ pipeline {
         if (env.BRANCH_NAME == "master") {
 
           def infraChanged = sh(
-            script: "git diff --name-only HEAD~1 HEAD | grep '^infra/' || true",
+            script: "git diff --name-only origin/master~1 origin/master | grep '^infra/' || true",
             returnStdout: true
-          ).trim()
+            ).trim()
 
           if (infraChanged) {
             echo "✅ Infra changes detected. Triggering Infra pipeline."
