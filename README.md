@@ -1,138 +1,203 @@
-# Gatekeeper API
+# Gatekeeper
 
-Gatekeeper is a **production‑grade API key management and rate‑limiting service**
-built with **Node.js, Redis, and Redis Lua**.
-It is designed to run as an **independent infrastructure service** that other
-products can rely on safely.
+Gatekeeper is a **production-grade API key management and distributed
+rate-limiting service** designed to operate as a standalone
+infrastructure component in modern cloud environments.
 
----
-
-## ✨ What Problem Does Gatekeeper Solve?
-
-> “I need to protect my APIs with API keys and rate limits that are **correct under concurrency**, observable, and reliable in production.”
-
-Gatekeeper provides:
-
-- Secure API key issuance and lifecycle management
-- Atomic, race‑free rate limiting using Redis Lua
-- Clear error responses and HTTP‑standard headers
-- First‑class observability (logs + metrics)
-- A clean separation between **build‑time** and **run‑time** concerns
+It is not just middleware --- it is a fully deployable, horizontally
+scalable system with Infrastructure as Code, CI/CD automation, private
+networking, and security hardening built in.
 
 ---
 
-## 🧠 Key Design Principles
+## 🚀 What Gatekeeper Provides
 
-- **Fail‑closed by default**  
-  If Redis is unavailable, requests are rejected instead of silently allowed.
+Gatekeeper enables applications to delegate:
 
-- **Atomic correctness**  
-  Rate limiting is enforced inside Redis using Lua scripts to avoid race conditions.
+- 🔑 API key lifecycle management
+- ⚡ Distributed atomic rate limiting
+- 📊 Observability and structured logging
+- ☁ Production-ready AWS deployment
+- 🔐 Secure secret handling
 
-- **Immutable production artifacts**  
-  The Docker image does not depend on Redis at build time.
-
-- **Dev ≠ Prod**  
-  Docker Compose is used only for local development, never in production.
-
----
-
-## 🏗 Architecture Overview
-
-Clients → Gatekeeper API (Node.js) → Redis → Redis Lua Script
+It is built to demonstrate real-world backend + DevOps engineering
+practices.
 
 ---
 
-## 🚀 Features
+## 🔎 What Makes This Different?
 
-### API Key Management
+Gatekeeper is intentionally designed beyond a simple Express middleware.
 
-- Create API keys (admin‑only)
-- Disable API keys
-- Rotate API keys
-- Per‑key rate limit configuration
+It demonstrates:
 
-### Rate Limiting
+- ✅ Atomic rate limiting using **Redis Lua scripts**
+- ✅ Fully modular **Terraform Infrastructure as Code**
+- ✅ **Private ECS Fargate deployment** (no public containers)
+- ✅ **VPC Endpoints instead of NAT Gateway**
+- ✅ Secrets injection via **AWS Secrets Manager**
+- ✅ Strict separation of **CI → Infra → CD pipelines**
+- ✅ ECS deployment circuit breaker with automatic rollback
+- ✅ Rolling deployments with zero-downtime strategy
 
-- Token bucket algorithm
-- Burst support
-- Atomic enforcement using Redis Lua
-- Standard headers:
-  - X‑RateLimit‑Limit
-  - X‑RateLimit‑Remaining
-  - X‑RateLimit‑Reset
-  - Retry‑After
-
-### Observability
-
-- Structured JSON logs
-- Prometheus‑style metrics
-- Health endpoint
+This project focuses on correctness, production safety, and
+architectural clarity.
 
 ---
 
-## 🔐 Authentication
+## 🏗 High-Level System Architecture
 
-### Admin Authentication
+    Internet
+       ↓
+    Application Load Balancer (Public Subnet)
+       ↓
+    ECS Fargate Tasks (Private Subnets, No Public IP)
+       ↓
+    Redis (Atomic Lua-based rate limiting)
 
-X‑Admin‑Secret: <ADMIN_SECRET>
+### Infrastructure Characteristics
 
-### Client Authentication
-
-X‑API‑Key: <API_KEY>
-
----
-
-## 📡 API Endpoints (Summary)
-
-GET /health  
-GET /metrics  
-POST /admin/api-keys  
-POST /admin/api-keys/:key/disable  
-POST /admin/api-keys/:key/rotate  
-POST /v1/limit/check
-
-Swagger UI available at `/docs`.
+- ALB is the only publicly accessible component
+- ECS tasks run in private subnets
+- No public IPs assigned to containers
+- No NAT Gateway required
+- AWS service access via VPC Interface Endpoints
 
 ---
 
-## 🐳 Running in Production
+## ⚙ Core Functional Features
 
-```bash
-docker build -t gatekeeper:prod .
+### 🔑 API Key Management
 
-docker network create gatekeeper-net
+- Create API keys
+- Enable / Disable keys
+- Assign per-key rate limits
+- Admin authentication layer (`X-Admin-Secret`)
 
-docker run -d --name redis --network gatekeeper-net redis:7-alpine
+### ⚡ Distributed Rate Limiting
 
-docker run --rm \
-  --network gatekeeper-net \
-  -p 3002:3002 \
-  -e PORT=3002 \
-  -e REDIS_URL=redis://redis:6379 \
-  -e ADMIN_SECRET=<SECURE_ADMIN_SECRET_KEY> \
-  gatekeeper:prod
-```
+Implemented using Redis Lua to ensure:
 
----
+- Atomic increments
+- Zero race conditions
+- Accurate window resets
+- Horizontal scalability
+- Fail-closed semantics
 
-## 📈 Metrics
+If Redis becomes unavailable → requests are rejected.
 
-- gatekeeper_requests_total
-- gatekeeper_requests_allowed
-- gatekeeper_requests_blocked
-- gatekeeper_auth_failures
-- gatekeeper_rate_limiter_errors
+Security is prioritized over silent allowance.
 
 ---
 
-## 🧩 Why Redis Lua?
+## 🏭 Deployment Architecture
 
-Redis Lua guarantees **atomic execution**, preventing race conditions under
-concurrent load.
+Gatekeeper uses three fully separated Jenkins pipelines:
+
+### 1️⃣ CI Pipeline
+
+- Install dependencies
+- Run tests
+- Build Docker image
+- Push to ECR
+
+### 2️⃣ Infrastructure Pipeline
+
+- Terraform plan
+- Manual approval gate
+- Terraform apply
+- Remote state (S3 + DynamoDB locking)
+
+Infrastructure changes are controlled and auditable.
+
+### 3️⃣ CD Pipeline
+
+- Fetch current ECS task definition
+- Register new revision with updated image
+- Trigger rolling deployment
+- Wait for service stability
+- Automatic rollback via ECS circuit breaker
+
+Deployments are safe, traceable, and zero-downtime.
 
 ---
 
-## 🧑‍💻 License
+## 🔐 Secret Management
 
-MIT
+Secrets are stored in **AWS Secrets Manager**.
+
+They are injected into ECS containers using the `secrets` block in the
+task definition.
+
+No secrets are stored in:
+
+- Git repository
+- Docker images
+- Terraform state
+- Jenkins configuration
+
+This enforces clean separation of code and secrets.
+
+---
+
+## 📚 Project Documentation
+
+Detailed documentation is available under the `docs/` directory:
+
+- `ARCHITECTURE.md` -- System design and component overview\
+- `INFRASTRUCTURE.md` -- Terraform structure and AWS resources\
+- `CI-CD.md` -- Pipeline flow and deployment strategy\
+- `SECURITY.md` -- Threat model and hardening decisions\
+- `OPERATIONS.md` -- Deployment & operational guidelines\
+- `DECISIONS.md` -- Architectural decision records
+
+---
+
+## 🧠 Why This Project Exists
+
+Gatekeeper exists to demonstrate the intersection of:
+
+- Backend Engineering
+- Distributed Systems
+- Infrastructure as Code
+- Cloud Security
+- DevOps Automation
+- Production Deployment Strategy
+
+It is designed as a portfolio-quality project that reflects real-world
+production architecture decisions.
+
+---
+
+## 📌 Technology Stack
+
+- Node.js
+- Redis
+- Lua
+- Docker
+- AWS ECS Fargate
+- Application Load Balancer
+- AWS Secrets Manager
+- Terraform
+- Jenkins
+
+---
+
+## 🛡 Design Philosophy
+
+Gatekeeper prioritizes:
+
+- Deterministic behavior
+- Fail-closed safety
+- Minimal surface area
+- Explicit infrastructure boundaries
+- Long-term maintainability
+
+Correctness over convenience.
+
+---
+
+## 📄 License
+
+This project is intended for educational and portfolio demonstration
+purposes.

@@ -73,6 +73,17 @@ module "endpoints" {
 module "ecs" {
   source = "./modules/ecs"
 
+  container_secrets = [
+    {
+      name      = "REDIS_URL"
+      name      = "PORT"
+      name      = "ADMIN_SECRET"
+      name      = "NODE_ENV"
+      valueFrom = "arn:aws:secretsmanager:us-east-1:058264153265:secret:gatekeeper/prod/app-secrets"
+    }
+  ]
+
+
   project_name       = var.project_name
   region             = var.region
   vpc_id             = module.networking.vpc_id
