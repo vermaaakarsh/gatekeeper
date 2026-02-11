@@ -75,7 +75,7 @@ resource "aws_ecs_task_definition" "this" {
   container_definitions = jsonencode([
     {
       name  = var.project_name
-      image = var.container_image
+      image = "public.ecr.aws/nginx/nginx:latest"
 
       essential = true
 
