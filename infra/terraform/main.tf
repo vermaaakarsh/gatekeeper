@@ -93,3 +93,13 @@ module "ecs" {
   app_port           = var.app_port
 
 }
+
+module "redis" {
+  source = "./modules/redis"
+
+  project_name       = var.project_name
+  vpc_id             = module.networking.vpc_id
+  private_subnet_ids = module.networking.private_subnet_ids
+  ecs_sg_id          = module.security.ecs_sg_id
+}
+
