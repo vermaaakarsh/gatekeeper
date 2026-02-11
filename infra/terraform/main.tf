@@ -81,5 +81,4 @@ module "ecs" {
   target_group_arn   = module.alb.target_group_arn
   app_port           = var.app_port
 
-  container_image = var.container_image
 }

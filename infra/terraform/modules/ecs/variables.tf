@@ -33,11 +33,6 @@ variable "app_port" {
   type        = number
 }
 
-variable "container_image" {
-  description = "Full container image URI"
-  type        = string
-}
-
 variable "desired_count" {
   description = "Number of tasks"
   type        = number
