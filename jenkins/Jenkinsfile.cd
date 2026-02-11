@@ -56,16 +56,16 @@ pipeline {
     stage("Register New Revision") {
       steps {
         sh """
-          cat task-definition.json \
-          | jq --arg IMAGE "${env.IMAGE_URI}" \
+          cat task-definition.json | jq \
+            --arg IMAGE "$IMAGE_URI" \
             '.containerDefinitions[0].image = $IMAGE
-             | del(.taskDefinitionArn)
-             | del(.revision)
-             | del(.status)
-             | del(.requiresAttributes)
-             | del(.compatibilities)
-             | del(.registeredAt)
-             | del(.registeredBy)' \
+            | del(.taskDefinitionArn)
+            | del(.revision)
+            | del(.status)
+            | del(.requiresAttributes)
+            | del(.compatibilities)
+            | del(.registeredAt)
+            | del(.registeredBy)' \
           > new-task-def.json
         """
 
@@ -76,6 +76,7 @@ pipeline {
         """
       }
     }
+
 
     stage("Deploy") {
       steps {
