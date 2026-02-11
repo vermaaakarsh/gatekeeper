@@ -47,18 +47,19 @@ pipeline {
           aws ecs describe-task-definition \
             --task-definition ${TASK_FAMILY} \
             --region ${AWS_REGION} \
-            --query taskDefinition \
-            > task-definition.json
+            > task-definition-full.json
         """
       }
     }
 
+
     stage("Register New Revision") {
       steps {
         sh """
-          cat task-definition.json | jq \
+          cat task-definition-full.json | jq \
             --arg IMAGE "$IMAGE_URI" \
-            '.containerDefinitions[0].image = $IMAGE
+            '.taskDefinition
+            | .containerDefinitions[0].image = \$IMAGE
             | del(.taskDefinitionArn)
             | del(.revision)
             | del(.status)
@@ -76,6 +77,8 @@ pipeline {
         """
       }
     }
+
+
 
 
     stage("Deploy") {
