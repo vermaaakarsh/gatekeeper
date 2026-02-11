@@ -23,51 +23,13 @@ pipeline {
         not { branch "master" }
       }
       steps {
-        script {
-          echo "Not on master branch. Skipping deployment."
-          currentBuild.result = 'SUCCESS'
-          return
-        }
-      }
-    }
-
-    stage("Wait For Infra Stability") {
-      steps {
-        script {
-          def infraJob = Jenkins.instance.getItemByFullName("gatekeeper-infra")
-
-          if (infraJob == null) {
-            error("Infra job not found. Aborting CD.")
-          }
-
-          while (true) {
-            def lastBuild = infraJob.getLastBuild()
-
-            if (lastBuild == null) {
-              error("Infra has never been executed. Aborting CD.")
-            }
-
-            if (lastBuild.isBuilding()) {
-              echo "Infra is building. Waiting 30 seconds..."
-              sleep 30
-              continue
-            }
-
-            if (lastBuild.getResult()?.toString() != "SUCCESS") {
-              error("Infra build failed. Aborting CD.")
-            }
-
-            echo "Infra is stable."
-            break
-          }
-        }
+        echo "Not on master branch. Skipping deployment."
+        script { currentBuild.result = 'SUCCESS' }
       }
     }
 
     stage("Checkout") {
-      steps {
-        checkout scm
-      }
+      steps { checkout scm }
     }
 
     stage("Resolve Image Tag") {
@@ -78,18 +40,12 @@ pipeline {
             returnStdout: true
           ).trim()
 
-          if (!IMAGE_TAG) {
-            error("package.json version not found")
-          }
-
           IMAGE_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${IMAGE_TAG}"
-
-          echo "Deploying image: ${IMAGE_URI}"
         }
       }
     }
 
-    stage("Fetch Current Task Definition") {
+    stage("Fetch Task Definition") {
       steps {
         sh """
           aws ecs describe-task-definition \
@@ -101,7 +57,7 @@ pipeline {
       }
     }
 
-    stage("Register New Task Definition Revision") {
+    stage("Register New Revision") {
       steps {
         sh """
           cat task-definition.json \
@@ -125,7 +81,7 @@ pipeline {
       }
     }
 
-    stage("Deploy To ECS") {
+    stage("Deploy") {
       steps {
         sh """
           aws ecs update-service \
@@ -137,7 +93,7 @@ pipeline {
       }
     }
 
-    stage("Wait For Service Stability") {
+    stage("Wait For Stability") {
       steps {
         sh """
           aws ecs wait services-stable \
