@@ -77,8 +77,14 @@ pipeline {
 
   post {
     success {
-      echo "✅CI succeeded. Triggering CD..."
-      build job: 'gatekeeper-cd', wait: false
+      script {
+      if (env.BRANCH_NAME == "master") {
+        echo "✅CI succeeded on master. Triggering CD..."
+        build job: 'gatekeeper-cd', wait: false
+      } else {
+        echo "✅CI succeeded on ${env.BRANCH_NAME}. Not triggering CD."
+      }
+    }
     }
     failure {
       echo "❌CI failed."
