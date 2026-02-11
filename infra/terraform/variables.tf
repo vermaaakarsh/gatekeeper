@@ -46,8 +46,4 @@ variable "health_check_path" {
   default     = "/health"
 }
 
-variable "container_image" {
-  description = "Full container image URI"
-  type        = string
-}
 
