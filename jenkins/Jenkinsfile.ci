@@ -7,32 +7,27 @@ pipeline {
   }
 
   environment {
-    NODE_ENV = "test"
-    APP_NAME   = "gatekeeper"
-    AWS_REGION = "us-east-1"
-    ECR_REPO   = "personal/gatekeeper"
+    NODE_ENV     = "test"
+    APP_NAME     = "gatekeeper"
+    AWS_REGION   = "us-east-1"
+    ECR_REPO     = "personal/gatekeeper"
     AWS_ACCOUNT_ID = "058264153265"
   }
 
   stages {
 
     stage("Checkout") {
-      steps {
-        checkout scm
-      }
+      steps { checkout scm }
     }
 
     stage("Install Dependencies") {
-      steps {
-        sh "pnpm install --frozen-lockfile"
-      }
+      steps { sh "pnpm install --frozen-lockfile" }
     }
 
-    stage("Run Tests & Quality Checks") {
-      steps {
-        sh "pnpm test"
-      }
+    stage("Run Tests") {
+      steps { sh "pnpm test" }
     }
+
     stage("Build Docker Image") {
       when {
         allOf {
@@ -45,38 +40,18 @@ pipeline {
           IMAGE_TAG = sh(
             script: "node -p \"require('./package.json').version\"",
             returnStdout: true
-            ).trim()
-        
-          if (!IMAGE_TAG) {
-            error("package.json version not found")
-            }
-
+          ).trim()
 
           IMAGE_URI = "${APP_NAME}:${IMAGE_TAG}"
 
-          COMMIT_SHA = sh(
-            script: "git rev-parse HEAD",
-            returnStdout: true
-            ).trim()
-
-          echo "Building ${APP_NAME}:${IMAGE_TAG} from commit ${COMMIT_SHA}"
-
-
-          sh """
-            docker build \
-              -t ${IMAGE_URI} \
-              .
-          """
+          sh "docker build -t ${IMAGE_URI} ."
         }
       }
     }
 
-    stage("Tag & Push to ECR") {
+    stage("Push to ECR") {
       when {
-        allOf {
-          branch "master"
-          not { changeRequest() }
-        }
+        branch "master"
       }
       steps {
         script {
@@ -91,37 +66,25 @@ pipeline {
           sh """
             docker tag ${IMAGE_URI} \
               ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${IMAGE_TAG}
-          """
 
-          sh """
-            docker tag ${IMAGE_URI} \
-              ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:latest
-          """
-
-          sh """
             docker push \
               ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${IMAGE_TAG}
-
-            docker push \
-              ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:latest
           """
-
         }
       }
     }
   }
 
   post {
+    success {
+      echo "✅CI succeeded. Triggering CD..."
+      build job: 'gatekeeper-cd', wait: false
+    }
+    failure {
+      echo "❌CI failed."
+    }
     always {
       cleanWs()
-    }
-
-    failure {
-      echo "❌ Pipeline failed"
-    }
-
-    success {
-      echo "✅ Pipeline succeeded"
     }
   }
 }

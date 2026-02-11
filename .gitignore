@@ -3,3 +3,17 @@ node_modules
 dist
 build
 .log*
+
+# Terraform
+.terraform/
+.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.*
+tfplan
+crash.log
+# Local override files
+*.tfvars
+*.tfvars.json
+
+# OS
+.DS_Store

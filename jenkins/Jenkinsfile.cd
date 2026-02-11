@@ -1,0 +1,163 @@
+pipeline {
+  agent any
+
+  options {
+    disableConcurrentBuilds()
+    timestamps()
+  }
+
+  environment {
+    AWS_REGION     = "us-east-1"
+    AWS_ACCOUNT_ID = "058264153265"
+    ECR_REPO       = "personal/gatekeeper"
+
+    CLUSTER_NAME = "gatekeeper-cluster"
+    SERVICE_NAME = "gatekeeper-service"
+    TASK_FAMILY  = "gatekeeper-task"
+  }
+
+  stages {
+
+    stage("Run Only On Master") {
+      when {
+        not { branch "master" }
+      }
+      steps {
+        script {
+          echo "Not on master branch. Skipping deployment."
+          currentBuild.result = 'SUCCESS'
+          return
+        }
+      }
+    }
+
+    stage("Wait For Infra Stability") {
+      steps {
+        script {
+          def infraJob = Jenkins.instance.getItemByFullName("gatekeeper-infra")
+
+          if (infraJob == null) {
+            error("Infra job not found. Aborting CD.")
+          }
+
+          while (true) {
+            def lastBuild = infraJob.getLastBuild()
+
+            if (lastBuild == null) {
+              error("Infra has never been executed. Aborting CD.")
+            }
+
+            if (lastBuild.isBuilding()) {
+              echo "Infra is building. Waiting 30 seconds..."
+              sleep 30
+              continue
+            }
+
+            if (lastBuild.getResult()?.toString() != "SUCCESS") {
+              error("Infra build failed. Aborting CD.")
+            }
+
+            echo "Infra is stable."
+            break
+          }
+        }
+      }
+    }
+
+    stage("Checkout") {
+      steps {
+        checkout scm
+      }
+    }
+
+    stage("Resolve Image Tag") {
+      steps {
+        script {
+          IMAGE_TAG = sh(
+            script: "node -p \"require('./package.json').version\"",
+            returnStdout: true
+          ).trim()
+
+          if (!IMAGE_TAG) {
+            error("package.json version not found")
+          }
+
+          IMAGE_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${IMAGE_TAG}"
+
+          echo "Deploying image: ${IMAGE_URI}"
+        }
+      }
+    }
+
+    stage("Fetch Current Task Definition") {
+      steps {
+        sh """
+          aws ecs describe-task-definition \
+            --task-definition ${TASK_FAMILY} \
+            --region ${AWS_REGION} \
+            --query taskDefinition \
+            > task-definition.json
+        """
+      }
+    }
+
+    stage("Register New Task Definition Revision") {
+      steps {
+        sh """
+          cat task-definition.json \
+          | jq --arg IMAGE "${IMAGE_URI}" \
+            '.containerDefinitions[0].image = $IMAGE
+             | del(.taskDefinitionArn)
+             | del(.revision)
+             | del(.status)
+             | del(.requiresAttributes)
+             | del(.compatibilities)
+             | del(.registeredAt)
+             | del(.registeredBy)' \
+          > new-task-def.json
+        """
+
+        sh """
+          aws ecs register-task-definition \
+            --cli-input-json file://new-task-def.json \
+            --region ${AWS_REGION}
+        """
+      }
+    }
+
+    stage("Deploy To ECS") {
+      steps {
+        sh """
+          aws ecs update-service \
+            --cluster ${CLUSTER_NAME} \
+            --service ${SERVICE_NAME} \
+            --force-new-deployment \
+            --region ${AWS_REGION}
+        """
+      }
+    }
+
+    stage("Wait For Service Stability") {
+      steps {
+        sh """
+          aws ecs wait services-stable \
+            --cluster ${CLUSTER_NAME} \
+            --services ${SERVICE_NAME} \
+            --region ${AWS_REGION}
+        """
+      }
+    }
+  }
+
+  post {
+    success {
+      echo "✅ Deployment completed successfully."
+    }
+    failure {
+      echo "❌ Deployment failed."
+    }
+    always {
+      cleanWs()
+    }
+  }
+}

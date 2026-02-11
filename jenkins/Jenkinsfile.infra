@@ -1,0 +1,74 @@
+pipeline {
+  agent any
+
+  options {
+    disableConcurrentBuilds()
+    timestamps()
+  }
+
+  environment {
+    AWS_REGION = "us-east-1"
+  }
+
+  stages {
+
+    stage("Checkout") {
+      steps { checkout scm }
+    }
+
+    stage("Detect Infra Changes") {
+      when {
+        allOf {
+            branch "master"
+            changeset "infra/**"
+        }
+      }
+      steps {
+        echo "Infrastructure changes detected on master."
+      }
+    }
+
+    stage("Terraform Init") {
+      steps {
+        dir("infra/terraform") {
+          sh "terraform init -input=false"
+        }
+      }
+    }
+
+    stage("Terraform Plan") {
+      steps {
+        dir("infra/terraform") {
+          sh "terraform plan -out=tfplan -input=false"
+        }
+      }
+    }
+
+    stage("Manual Approval") {
+      steps {
+        input message: "Approve Infrastructure Changes?"
+      }
+    }
+
+    stage("Terraform Apply") {
+      steps {
+        dir("infra/terraform") {
+          sh "terraform apply -input=false -auto-approve tfplan"
+        }
+      }
+    }
+  }
+
+  post {
+  success {
+    echo "✅Infrastructure stable."
+  }
+  failure {
+    echo "❌Infrastructure failed."
+  }
+  always {
+    cleanWs()
+  }
+}
+
+}
