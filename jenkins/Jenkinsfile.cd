@@ -17,11 +17,25 @@ pipeline {
   }
 
   stages {
+
+    stage("Run Only On Master") {
+      when {
+        not { branch "master" }
+      }
+      steps {
+        echo "Not on master branch. Skipping deployment."
+      }
+    }
+
     stage("Checkout") {
-      steps { checkout scm }
+      when { branch "master" }
+      steps {
+        checkout scm
+      }
     }
 
     stage("Resolve Image Tag") {
+      when { branch "master" }
       steps {
         script {
           def imageTag = sh(
@@ -40,8 +54,8 @@ pipeline {
       }
     }
 
-
     stage("Fetch Task Definition") {
+      when { branch "master" }
       steps {
         sh """
           aws ecs describe-task-definition \
@@ -52,48 +66,55 @@ pipeline {
       }
     }
 
-
     stage("Register New Revision") {
+      when { branch "master" }
       steps {
-        sh """
-          cat task-definition-full.json | jq \
-            --arg IMAGE "$IMAGE_URI" \
-            '.taskDefinition
-            | .containerDefinitions[0].image = \$IMAGE
-            | del(.taskDefinitionArn)
-            | del(.revision)
-            | del(.status)
-            | del(.requiresAttributes)
-            | del(.compatibilities)
-            | del(.registeredAt)
-            | del(.registeredBy)' \
-          > new-task-def.json
-        """
+        script {
+          def revisionArn = sh(
+            script: """
+              cat task-definition-full.json | jq \
+                --arg IMAGE "${env.IMAGE_URI}" \
+                '.taskDefinition
+                 | .containerDefinitions[0].image = \$IMAGE
+                 | del(.taskDefinitionArn)
+                 | del(.revision)
+                 | del(.status)
+                 | del(.requiresAttributes)
+                 | del(.compatibilities)
+                 | del(.registeredAt)
+                 | del(.registeredBy)' \
+              > new-task-def.json
 
-        sh """
-          aws ecs register-task-definition \
-            --cli-input-json file://new-task-def.json \
-            --region ${AWS_REGION}
-        """
+              aws ecs register-task-definition \
+                --cli-input-json file://new-task-def.json \
+                --region ${AWS_REGION} \
+                --query 'taskDefinition.taskDefinitionArn' \
+                --output text
+            """,
+            returnStdout: true
+          ).trim()
+
+          env.NEW_TASK_DEF_ARN = revisionArn
+          echo "Registered new revision: ${env.NEW_TASK_DEF_ARN}"
+        }
       }
     }
 
-
-
-
     stage("Deploy") {
+      when { branch "master" }
       steps {
         sh """
           aws ecs update-service \
             --cluster ${CLUSTER_NAME} \
             --service ${SERVICE_NAME} \
-            --force-new-deployment \
+            --task-definition ${env.NEW_TASK_DEF_ARN} \
             --region ${AWS_REGION}
         """
       }
     }
 
     stage("Wait For Stability") {
+      when { branch "master" }
       steps {
         sh """
           aws ecs wait services-stable \
