@@ -1,29 +1,23 @@
 pipeline {
   agent any
-
   options {
     disableConcurrentBuilds()
     timestamps()
   }
-
   environment {
-    AWS_REGION     = "us-east-1"
+    AWS_REGION = "us-east-1"
     AWS_ACCOUNT_ID = "058264153265"
-    ECR_REPO       = "personal/gatekeeper"
-
+    ECR_REPO = "personal/gatekeeper"
     CLUSTER_NAME = "gatekeeper-cluster"
     SERVICE_NAME = "gatekeeper-service"
-    TASK_FAMILY  = "gatekeeper-task"
+    TASK_FAMILY = "gatekeeper-task"
   }
-
   stages {
-
     stage("Checkout") {
       steps {
         checkout scm
       }
     }
-
     stage("Resolve Image Tag") {
       steps {
         script {
@@ -31,18 +25,14 @@ pipeline {
             script: "node -p \"require('./package.json').version\"",
             returnStdout: true
           ).trim()
-
           if (!imageTag) {
             error("package.json version not found")
           }
-
           env.IMAGE_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${imageTag}"
-
           echo "Deploying image: ${env.IMAGE_URI}"
         }
       }
     }
-
     stage("Fetch Task Definition") {
       steps {
         sh """
@@ -53,7 +43,6 @@ pipeline {
         """
       }
     }
-
     stage("Register New Revision") {
       steps {
         script {
@@ -80,13 +69,11 @@ pipeline {
             """,
             returnStdout: true
           ).trim()
-
           env.NEW_TASK_DEF_ARN = revisionArn
           echo "Registered new revision: ${env.NEW_TASK_DEF_ARN}"
         }
       }
     }
-
     stage("Deploy") {
       steps {
         sh """
@@ -98,7 +85,6 @@ pipeline {
         """
       }
     }
-
     stage("Wait For Stability") {
       steps {
         sh """
@@ -110,7 +96,6 @@ pipeline {
       }
     }
   }
-
   post {
     success {
       echo "✅ Deployment completed successfully."

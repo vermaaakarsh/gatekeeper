@@ -1,0 +1,27 @@
+# Enforce LF for all text files
+* text=auto eol=lf
+
+# Explicitly define common text formats
+*.js text eol=lf
+*.ts text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.md text eol=lf
+*.tf text eol=lf
+*.sh text eol=lf
+*.env text eol=lf
+*.groovy text eol=lf
+
+# Docker
+Dockerfile text eol=lf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.zip binary
+*.gz binary
+*.tar binary

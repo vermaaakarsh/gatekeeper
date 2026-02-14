@@ -1,48 +1,65 @@
+properties([
+  parameters([
+    string(name: 'BRANCH_NAME', defaultValue: '', description: 'Branch name')
+  ])
+])
+
+
 pipeline {
   agent any
-
   options {
     disableConcurrentBuilds()
     timestamps()
   }
-
   environment {
     AWS_REGION = "us-east-1"
   }
-
   stages {
-
     stage("Checkout") {
-      steps { checkout scm }
+      steps {
+        checkout scm
+      }
     }
-
     stage("Terraform Init") {
-       when { branch "master" }
+      when {
+        expression {
+          params.BRANCH_NAME == "master"
+        }
+      }
       steps {
         dir("infra/terraform") {
           sh "terraform init -input=false"
         }
       }
     }
-
     stage("Terraform Plan") {
-       when { branch "master" }
+      when {
+        expression {
+          params.BRANCH_NAME == "master"
+        }
+      }
       steps {
         dir("infra/terraform") {
           sh "terraform plan -out=tfplan -input=false"
         }
       }
     }
-
     stage("Manual Approval") {
-       when { branch "master" }
+      when {
+        expression {
+          params.BRANCH_NAME == "master"
+        }
+      }
       steps {
         input message: "Approve Infrastructure Changes?"
       }
     }
-
     stage("Terraform Apply") {
-       when { branch "master" }
+      when {
+        expression {
+          params.BRANCH_NAME == "master"
+        }
+      }
       steps {
         dir("infra/terraform") {
           sh "terraform apply -input=false -auto-approve tfplan"
@@ -50,20 +67,18 @@ pipeline {
       }
     }
   }
-
   post {
-  success {
-    script {
-      echo "✅ Infra applied successfully. Triggering CD."
-      build job: 'gatekeeper-cd', wait: false
+    success {
+      script {
+        echo "✅ Infra applied successfully. Triggering CD."
+        build job: 'gatekeeper-cd', wait: false
+      }
+    }
+    failure {
+      echo "❌ Infrastructure failed."
+    }
+    always {
+      cleanWs()
     }
   }
-  failure {
-    echo "❌ Infrastructure failed."
-  }
-  always {
-    cleanWs()
-  }
-}
-
 }

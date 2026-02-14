@@ -1,0 +1,8 @@
+ignoredBuiltDependencies:
+  - cpu-features
+  - ssh2
+
+onlyBuiltDependencies:
+  - '@scarf/scarf'
+  - esbuild
+  - protobufjs
