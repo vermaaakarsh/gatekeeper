@@ -1,57 +1,54 @@
 pipeline {
   agent any
-
   options {
     disableConcurrentBuilds()
     timestamps()
   }
-
   environment {
-    NODE_ENV     = "test"
-    APP_NAME     = "gatekeeper"
-    AWS_REGION   = "us-east-1"
-    ECR_REPO     = "personal/gatekeeper"
+    NODE_ENV = "test"
+    APP_NAME = "gatekeeper"
+    AWS_REGION = "us-east-1"
+    ECR_REPO = "personal/gatekeeper"
     AWS_ACCOUNT_ID = "058264153265"
   }
-
   stages {
-
     stage("Checkout") {
-      steps { checkout scm }
+      steps {
+        checkout scm
+      }
     }
-
     stage("Install Dependencies") {
-      steps { sh "pnpm install --frozen-lockfile" }
+      steps {
+        sh "pnpm install --frozen-lockfile"
+      }
     }
-
     stage("Run Tests") {
-      steps { sh "pnpm test" }
+      steps {
+        sh "pnpm test"
+      }
     }
-
     stage("Build Docker Image") {
       when {
         allOf {
           branch "master"
-          not { changeRequest() }
+          not {
+            changeRequest()
+          }
         }
       }
       steps {
-          script {
-            def imageTag = sh(
-                script: "node -p \"require('./package.json').version\"",
-                returnStdout: true
-            ).trim()
-
-            def imageUri = "${APP_NAME}:${imageTag}"
-
-            sh "docker build -t ${imageUri} ."
-
-            env.IMAGE_TAG = imageTag
-            env.IMAGE_URI = imageUri
+        script {
+          def imageTag = sh(
+            script: "node -p \"require('./package.json').version\"",
+            returnStdout: true
+          ).trim()
+          def imageUri = "${APP_NAME}:${imageTag}"
+          sh "docker build -t ${imageUri} ."
+          env.IMAGE_TAG = imageTag
+          env.IMAGE_URI = imageUri
         }
       }
     }
-
     stage("Push to ECR") {
       when {
         branch "master"
@@ -65,7 +62,6 @@ pipeline {
               --password-stdin \
               ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
           """
-
           sh """
             docker tag ${IMAGE_URI} \
               ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${IMAGE_TAG}
@@ -77,35 +73,35 @@ pipeline {
       }
     }
   }
-
   post {
     success {
-    script {
-      if (env.BRANCH_NAME == "master") {
-
-        def infraChanged = false
-
-        for (changeSet in currentBuild.changeSets) {
-          for (entry in changeSet.items) {
-            for (file in entry.affectedFiles) {
-              if (file.path.startsWith("infra/")) {
-                infraChanged = true
-                break
+      script {
+        if (env.BRANCH_NAME == "master") {
+          def infraChanged = false
+          for (changeSet in currentBuild.changeSets) {
+            for (entry in changeSet.items) {
+              for (file in entry.affectedFiles) {
+                if (file.path.startsWith("infra/")) {
+                  infraChanged = true
+                  break
+                }
               }
             }
           }
-        }
-
-        if (infraChanged) {
-          echo "✅ Infra changes detected. Triggering Infra pipeline."
-          build job: 'gatekeeper-infra', wait: false
-        } else {
-          echo "✅ No infra changes. Triggering CD directly."
-          build job: 'gatekeeper-cd', wait: false
+          if (infraChanged) {
+            echo "✅ Infra changes detected. Triggering Infra pipeline."
+            build job: 'gatekeeper-infra',
+            parameters: [
+              string(name: 'BRANCH_NAME', value: env.BRANCH_NAME)
+            ],
+            wait: false
+          } else {
+            echo "✅ No infra changes. Triggering CD directly."
+            build job: 'gatekeeper-cd', wait: false
+          }
         }
       }
     }
-  }
     failure {
       echo "❌ CI failed."
     }

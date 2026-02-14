@@ -51,6 +51,9 @@ importers:
       prettier:
         specifier: ^3.8.1
         version: 3.8.1
+      prettier-plugin-groovy:
+        specifier: ^0.2.1
+        version: 0.2.1(prettier@3.8.1)
       supertest:
         specifier: ^7.2.2
         version: 7.2.2
@@ -1534,6 +1537,12 @@ packages:
   prettier-linter-helpers@1.0.1:
     resolution: {integrity: sha512-SxToR7P8Y2lWmv/kTzVLC1t/GDI2WGjMwNhLLE9qtH8Q13C+aEmuRlzDst4Up4s0Wc8sF2M+J57iB3cMLqftfg==}
     engines: {node: '>=6.0.0'}
+
+  prettier-plugin-groovy@0.2.1:
+    resolution: {integrity: sha512-89i4b9nxnQ+KKjl/rSktUA0u1HFCK3HeoqXAaHNpQC8wKjnL/FJ87pRQlDi0nrmGsWRcvGqbD1FaTgSS0EZ44Q==}
+    engines: {node: '>=20.0.0 || ^18.12.0'}
+    peerDependencies:
+      prettier: ^3.3.3
 
   prettier@3.8.1:
     resolution: {integrity: sha512-UOnG6LftzbdaHZcKoPFtOcCKztrQ57WkHDeRD9t/PTQtmT0NHSeWWepj6pS0z/N7+08BHFDQVUrfmfMRcZwbMg==}
@@ -3416,6 +3425,10 @@ snapshots:
   prettier-linter-helpers@1.0.1:
     dependencies:
       fast-diff: 1.3.0
+
+  prettier-plugin-groovy@0.2.1(prettier@3.8.1):
+    dependencies:
+      prettier: 3.8.1
 
   prettier@3.8.1: {}
 
