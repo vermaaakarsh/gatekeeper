@@ -3,20 +3,25 @@ openapi: 3.0.3
 info:
   title: Gatekeeper API
   description: |
-    Gatekeeper is a production-grade, Redis-backed API key and
-    rate-limiting service.
+    Gatekeeper is a production-grade, Redis-backed API key management
+    and distributed rate-limiting service.
 
-    It provides per-API-key rate limiting with fail-closed semantics,
-    atomic enforcement using Redis Lua, structured logging,
-    and Prometheus-compatible metrics.
+    It provides:
+
+    • Per-API-key rate limiting  
+    • Atomic enforcement using Redis Lua  
+    • Fail-closed security semantics  
+    • Structured JSON logging  
+    • Prometheus-compatible metrics  
 
     Versioning Strategy:
     URI-based versioning (/v1/).
-  version: 1.0.0
+
+  version: 0.0.0
 
 servers:
-  - url: http://localhost:3002
-    description: Local development
+  - url: /
+    description: Current deployment origin
 
 tags:
   - name: Public
@@ -41,6 +46,8 @@ components:
   schemas:
     ErrorResponse:
       type: object
+      required:
+        - error
       properties:
         error:
           type: object
@@ -60,6 +67,8 @@ components:
 
     RateLimitDecision:
       type: object
+      required:
+        - allowed
       properties:
         allowed:
           type: boolean
@@ -70,31 +79,55 @@ components:
       description: Maximum number of requests allowed in the current window
       schema:
         type: integer
+        example: 100
 
     X-RateLimit-Remaining:
       description: Remaining requests in the current window
       schema:
         type: integer
+        example: 42
 
     X-RateLimit-Reset:
       description: Epoch timestamp (seconds) when the rate limit resets
       schema:
         type: integer
+        example: 1710000000
 
     Retry-After:
-      description: Seconds to wait before retrying (only present on 429)
+      description: Seconds to wait before retrying
       schema:
         type: integer
+        example: 30
 
   responses:
     UnauthorizedError:
-      description: Unauthorized
+      description: Authentication failed
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
 
 paths:
+  /:
+    get:
+      tags: [Observability]
+      summary: API root
+      description: Returns service metadata and version.
+      responses:
+        '200':
+          description: Service metadata
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  version:
+                    type: string
+                  status:
+                    type: string
+
   /health:
     get:
       tags: [Observability]
@@ -114,7 +147,7 @@ paths:
   /metrics:
     get:
       tags: [Observability]
-      summary: Prometheus metrics
+      summary: Prometheus metrics endpoint
       responses:
         '200':
           description: Metrics output
@@ -164,9 +197,7 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
         '503':
-          description: |
-            Rate limiter unavailable (fail-closed behavior).
-            Requests are rejected when Redis is unreachable.
+          description: Backend rate limiter unavailable (fail-closed)
           content:
             application/json:
               schema:
@@ -187,10 +218,13 @@ paths:
               properties:
                 limit:
                   type: integer
+                  example: 100
                 window:
                   type: integer
+                  example: 60
                 burst:
                   type: integer
+                  example: 10
       responses:
         '201':
           description: API key created
@@ -201,6 +235,8 @@ paths:
                 properties:
                   apiKey:
                     type: string
+                  limits:
+                    type: object
         '401':
           $ref: '#/components/responses/UnauthorizedError'
 
@@ -262,13 +298,6 @@ paths:
                     type: string
                   limits:
                     type: object
-                    properties:
-                      limit:
-                        type: integer
-                      window:
-                        type: integer
-                      burst:
-                        type: integer
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '404':

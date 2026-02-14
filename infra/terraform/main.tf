@@ -52,6 +52,7 @@ module "alb" {
   alb_sg_id         = module.security.alb_sg_id
   app_port          = var.app_port
   health_check_path = var.health_check_path
+  certificate_arn   = var.certificate_arn
 }
 
 # --------------------------------------------------
@@ -76,23 +77,21 @@ module "ecs" {
   container_secrets = [
     {
       name      = "REDIS_URL"
-      valueFrom = "arn:aws:secretsmanager:us-east-1:058264153265:secret:gatekeeper/prod/app-secrets-ztiiPb:REDIS_URL::"
+      valueFrom = "${module.secrets.runtime_config_secret_arn}:REDIS_URL::"
     },
     {
       name      = "PORT"
-      valueFrom = "arn:aws:secretsmanager:us-east-1:058264153265:secret:gatekeeper/prod/app-secrets-ztiiPb:PORT::"
-    },
-    {
-      name      = "ADMIN_SECRET"
-      valueFrom = "arn:aws:secretsmanager:us-east-1:058264153265:secret:gatekeeper/prod/app-secrets-ztiiPb:ADMIN_SECRET::"
+      valueFrom = "${module.secrets.runtime_config_secret_arn}:PORT::"
     },
     {
       name      = "NODE_ENV"
-      valueFrom = "arn:aws:secretsmanager:us-east-1:058264153265:secret:gatekeeper/prod/app-secrets-ztiiPb:NODE_ENV::"
+      valueFrom = "${module.secrets.runtime_config_secret_arn}:NODE_ENV::"
+    },
+    {
+      name      = "ADMIN_SECRET"
+      valueFrom = "${module.secrets.app_secrets_secret_arn}:ADMIN_SECRET::"
     }
   ]
-
-
 
   project_name       = var.project_name
   region             = var.region
@@ -101,8 +100,8 @@ module "ecs" {
   ecs_sg_id          = module.security.ecs_sg_id
   target_group_arn   = module.alb.target_group_arn
   app_port           = var.app_port
-
 }
+
 
 module "redis" {
   source = "./modules/redis"
@@ -112,4 +111,14 @@ module "redis" {
   private_subnet_ids = module.networking.private_subnet_ids
   ecs_sg_id          = module.security.ecs_sg_id
 }
+
+module "secrets" {
+  source = "./modules/secrets"
+
+  project_name   = var.project_name
+  app_port       = var.app_port
+  environment    = var.environment
+  redis_endpoint = module.redis.redis_endpoint
+}
+
 

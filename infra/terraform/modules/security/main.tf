@@ -23,6 +23,18 @@ resource "aws_security_group_rule" "alb_inbound_http" {
   cidr_blocks = ["0.0.0.0/0"]
 }
 
+# Allow HTTPS from anywhere
+resource "aws_security_group_rule" "alb_inbound_https" {
+  type              = "ingress"
+  security_group_id = aws_security_group.alb.id
+
+  from_port   = 443
+  to_port     = 443
+  protocol    = "tcp"
+  cidr_blocks = ["0.0.0.0/0"]
+}
+
+
 # Allow all outbound from ALB
 resource "aws_security_group_rule" "alb_outbound_all" {
   type              = "egress"
@@ -58,7 +70,7 @@ resource "aws_security_group_rule" "ecs_inbound_from_alb" {
   source_security_group_id = aws_security_group.alb.id
 }
 
-# 🔥 REQUIRED: Allow ECS to talk to interface endpoints (self reference on 443)
+# Allow ECS to talk to interface endpoints (self reference on 443)
 resource "aws_security_group_rule" "ecs_inbound_self_https" {
   type              = "ingress"
   security_group_id = aws_security_group.ecs.id
@@ -68,7 +80,7 @@ resource "aws_security_group_rule" "ecs_inbound_self_https" {
   self              = true
 }
 
-# 🔥 CRITICAL FIX: Allow full outbound
+# Allow full outbound
 # Required for:
 # - DNS resolution
 # - ECR pulls

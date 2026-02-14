@@ -56,7 +56,31 @@ resource "aws_iam_role" "execution_role" {
 resource "aws_iam_role_policy_attachment" "execution_policy" {
   role       = aws_iam_role.execution_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+
 }
+
+data "aws_caller_identity" "current" {}
+
+resource "aws_iam_role_policy" "execution_secrets_policy" {
+  name = "${var.project_name}-ecs-secrets-policy"
+  role = aws_iam_role.execution_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AllowReadGatekeeperSecrets"
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret"
+        ]
+        Resource = "arn:aws:secretsmanager:${var.region}:${data.aws_caller_identity.current.account_id}:secret:gatekeeper/*"
+      }
+    ]
+  })
+}
+
 
 # -------------------------------------------------------
 # ECS Task Definition
@@ -138,6 +162,7 @@ resource "aws_ecs_service" "this" {
 
   depends_on = [
     aws_iam_role_policy_attachment.execution_policy,
+    aws_iam_role_policy.execution_secrets_policy,
     aws_cloudwatch_log_group.this
   ]
 

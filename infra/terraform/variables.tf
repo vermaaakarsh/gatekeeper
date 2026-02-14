@@ -46,4 +46,14 @@ variable "health_check_path" {
   default     = "/health"
 }
 
+variable "certificate_arn" {
+  description = "ACM certificate ARN"
+  type        = string
+  default     = "arn:aws:acm:us-east-1:058264153265:certificate/0162c910-720b-417e-b5d4-61477b58033b"
+}
 
+variable "environment" {
+  description = "Deployment environment"
+  type        = string
+  default     = "production"
+}
