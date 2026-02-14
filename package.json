@@ -20,7 +20,10 @@
       "eslint --fix",
       "prettier --write"
     ],
-    "*.{js,jsx,json,css,md}": [
+    "*.{js,jsx,json,css,md,yml,yaml}": [
+      "prettier --write"
+    ],
+    "Jenkinsfile*": [
       "prettier --write"
     ],
     "*.tf": [
@@ -48,6 +51,7 @@
     "lint-staged": "^16.2.7",
     "nodemon": "^3.1.11",
     "prettier": "^3.8.1",
+    "prettier-plugin-groovy": "^0.2.1",
     "supertest": "^7.2.2",
     "testcontainers": "^11.11.0",
     "vitest": "^4.0.18"
