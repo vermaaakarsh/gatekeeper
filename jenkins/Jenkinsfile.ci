@@ -80,26 +80,32 @@ pipeline {
 
   post {
     success {
-      script {
-        if (env.BRANCH_NAME == "master") {
+    script {
+      if (env.BRANCH_NAME == "master") {
 
-          def changedFiles = sh(
-            script: "git diff --name-only HEAD~1 HEAD",
-            returnStdout: true
-          ).trim().split("\n")
+        def infraChanged = false
 
-          def infraChanged = changedFiles.any { it.startsWith("infra/") }
-
-          if (infraChanged) {
-            echo "✅ Infra changes detected. Triggering Infra pipeline."
-            build job: 'gatekeeper-infra', wait: false
-          } else {
-            echo "✅ No infra changes. Triggering CD directly."
-            build job: 'gatekeeper-cd', wait: false
+        for (changeSet in currentBuild.changeSets) {
+          for (entry in changeSet.items) {
+            for (file in entry.affectedFiles) {
+              if (file.path.startsWith("infra/")) {
+                infraChanged = true
+                break
+              }
+            }
           }
+        }
+
+        if (infraChanged) {
+          echo "✅ Infra changes detected. Triggering Infra pipeline."
+          build job: 'gatekeeper-infra', wait: false
+        } else {
+          echo "✅ No infra changes. Triggering CD directly."
+          build job: 'gatekeeper-cd', wait: false
         }
       }
     }
+  }
     failure {
       echo "❌ CI failed."
     }
